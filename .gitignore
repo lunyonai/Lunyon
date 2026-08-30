@@ -13,6 +13,10 @@ dist-ssr
 *.local
 .env
 .env.local
+frontend/.env
+frontend/.env.local
+frontend/dist
+frontend/node_modules
 backend/.env
 backend/dist
 backend/node_modules

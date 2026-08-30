@@ -61,10 +61,14 @@ Header de auth: `Authorization: Bearer <access_token>`
 4. Configure as mesmas variáveis do `.env.example`
 5. `FRONTEND_URL` = URL do Vercel
 
+## Deploy completo (Vercel)
+
+O `vercel.json` na raiz do repositório faz deploy do frontend (`frontend/`) e backend (`backend/`) juntos.
+
 ## Arquitetura
 
 ```
-React (Vercel) → API Node (Render/Railway/Azure) → PostgreSQL (Supabase)
+React (frontend/) → API Node (backend/) → PostgreSQL (Supabase)
                                       ↓
                          Stripe / PayPal / OpenAI / SMTP
 ```
