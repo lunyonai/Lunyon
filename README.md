@@ -1,11 +1,11 @@
-# Lunyon
+# Lunyo
 
-Plataforma AI Employee — frontend React + backend Node/TypeScript + PostgreSQL (Supabase).
+Plataforma Lunyo — frontend React + backend Node/TypeScript + PostgreSQL (Supabase).
 
 ## Estrutura
 
 ```
-Lunyon/
+frontend/
 ├── src/                 # Frontend React (Vercel)
 ├── backend/             # API Node/TS (Render / Railway / Azure)
 │   ├── src/

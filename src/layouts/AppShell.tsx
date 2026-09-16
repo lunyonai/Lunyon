@@ -29,7 +29,7 @@ export default function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen bg-slate-950 text-white">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-800 bg-slate-950 lg:flex lg:flex-col">
         <div className="flex h-20 items-center border-b border-slate-800 px-6">
-          <Logo showTagline={false} compact />
+          <Logo size="small" />
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-6">
