@@ -1,1 +1,27 @@
 @import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --lunyo-bg: #020617;
+  --lunyo-surface: #0b1220;
+  --lunyo-surface-elevated: #111827;
+  --lunyo-border: rgba(148, 163, 184, 0.14);
+
+  /* Brand */
+  --lunyo-primary: #2563eb;
+  --lunyo-primary-soft: rgba(37, 99, 235, 0.14);
+  --lunyo-success: #34d399;
+
+  /* Text */
+  --lunyo-text: #e8eef9;
+  --lunyo-text-muted: #94a3b8;
+
+  /* Rhythm */
+  --lunyo-radius: 0.5rem;
+  --lunyo-duration: 420ms;
+  --lunyo-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Network (canvas / supporting visuals) */
+  --lunyo-network-line: rgba(100, 116, 139, 0.12);
+  --lunyo-network-pulse: rgba(96, 165, 250, 0.75);
+}
