@@ -35,6 +35,7 @@ export async function createPrompt(params: {
   return data;
 }
 
+/** @deprecated Legacy course product. Not used by the Lunyon app. */
 export async function listTemplates(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("templates")
@@ -46,6 +47,7 @@ export async function listTemplates(userId: string) {
   return data;
 }
 
+/** @deprecated Legacy course product. Not used by the Lunyon app. */
 export async function getCourseProgress(userId: string) {
   const { data, error } = await supabaseAdmin
     .from("course_progress")
@@ -56,6 +58,7 @@ export async function getCourseProgress(userId: string) {
   return data;
 }
 
+/** @deprecated Legacy course product. Not used by the Lunyon app. */
 export async function upsertCourseProgress(params: {
   userId: string;
   courseId: string;
@@ -89,15 +92,19 @@ export async function getSettings(userId: string) {
   return data;
 }
 
-export async function updateSettings(
-  userId: string,
-  settings: Record<string, unknown>,
-) {
+export type SettingsPatch = {
+  theme?: "dark" | "light";
+  locale?: "en" | "pt" | "es" | "pt-BR";
+  notifications_enabled?: boolean;
+  preferred_ai_provider?: "openai" | "anthropic" | "gemini";
+};
+
+export async function updateSettings(userId: string, settings: SettingsPatch) {
   const { data, error } = await supabaseAdmin
     .from("settings")
     .upsert({
-      user_id: userId,
       ...settings,
+      user_id: userId,
       updated_at: new Date().toISOString(),
     })
     .select()

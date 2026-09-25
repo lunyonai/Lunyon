@@ -1,12 +1,15 @@
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useLocale } from "../../../i18n/LocaleProvider";
 
-const steps = ["Inbox", "Summarize", "Draft reply", "Follow-up"] as const;
+const stepKeys = ["inbox", "summarize", "draftReply", "followUp"] as const;
 const finalIndex = 2;
 
 export default function WorkflowsDemo() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const { t } = useLocale();
+  const steps = stepKeys.map((key) => t(`demo.${key}`));
 
   useEffect(() => {
     const timers = [
@@ -25,13 +28,13 @@ export default function WorkflowsDemo() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-[var(--lunyo-text)]">
-          Inbox triage
+          {t("demo.inboxTriage")}
         </p>
         <span
           className="rounded-md border border-[var(--lunyo-primary)]/20 px-2 py-0.5 text-[10px] font-medium text-[var(--lunyo-primary)]"
           style={{ backgroundColor: "var(--lunyo-primary-soft)" }}
         >
-          Running
+          {t("demo.running")}
         </span>
       </div>
 
@@ -70,8 +73,7 @@ export default function WorkflowsDemo() {
       </div>
 
       <p className="text-xs leading-5 text-[var(--lunyo-text-muted)]">
-        Lunyo reads incoming messages, summarizes context, and prepares the
-        next reply while you stay focused elsewhere.
+        {t("demo.workflowBody")}
       </p>
     </div>
   );

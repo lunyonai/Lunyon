@@ -5,6 +5,7 @@ import Logo from "./Logo";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../../hooks/useAuth";
+import { useLocale } from "../../../i18n/LocaleProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -25,6 +26,7 @@ const item = {
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const { t } = useLocale();
 
   const { login, register } = useAuth();
 
@@ -45,7 +47,7 @@ export default function LoginForm() {
 
     try {
       if (isSignup) {
-        await register(email, password);
+        await register(email, password, name);
       } else {
         await login(email, password);
       }
@@ -55,7 +57,7 @@ export default function LoginForm() {
       const message =
         err instanceof Error
           ? err.message
-          : "Something went wrong. Please try again.";
+          : t("login.fallbackError");
       setError(message);
     } finally {
       setLoading(false);
@@ -86,13 +88,11 @@ export default function LoginForm() {
         className="mb-7"
       >
         <h1 className="text-[1.75rem] font-semibold tracking-tight text-[var(--lunyo-text)]">
-          {isSignup ? "Create your account" : "Welcome back"}
+          {isSignup ? t("login.createTitle") : t("login.welcome")}
         </h1>
 
         <p className="mt-2.5 text-sm leading-6 text-[var(--lunyo-text-muted)]">
-          {isSignup
-            ? "Start reclaiming your time with Lunyo."
-            : "Reclaim your time and continue where you left off."}
+          {isSignup ? t("login.createBody") : t("login.welcomeBody")}
         </p>
       </motion.div>
 
@@ -101,7 +101,7 @@ export default function LoginForm() {
           {isSignup && (
             <label className="block">
               <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-                Full name
+                {t("login.fullName")}
               </span>
 
               <div className="relative">
@@ -111,7 +111,7 @@ export default function LoginForm() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder={t("login.fullNamePlaceholder")}
                   className={inputClassName}
                 />
               </div>
@@ -120,7 +120,7 @@ export default function LoginForm() {
 
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-              Email
+                {t("login.email")}
             </span>
 
             <div className="relative">
@@ -140,7 +140,7 @@ export default function LoginForm() {
 
           <label className="block">
             <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-              Password
+                {t("login.password")}
             </span>
 
             <div className="relative">
@@ -150,7 +150,7 @@ export default function LoginForm() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
+                placeholder={t("login.passwordPlaceholder")}
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 required
                 className={inputClassName}
@@ -169,35 +169,39 @@ export default function LoginForm() {
             disabled={loading}
             className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] bg-[var(--lunyo-primary)] text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Loading..." : isSignup ? "Create account" : "Sign In"}
+            {loading
+              ? t("login.loading")
+              : isSignup
+                ? t("login.createAccount")
+                : t("login.signIn")}
             {!loading && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
 
         <div className="my-5 flex items-center gap-3">
           <div className="h-px flex-1 bg-[var(--lunyo-border)]" />
-          <span className="text-[11px] text-slate-600">or</span>
+          <span className="text-[11px] text-slate-600">{t("login.or")}</span>
           <div className="h-px flex-1 bg-[var(--lunyo-border)]" />
         </div>
 
         <button
           type="button"
           onClick={() => {
-            alert("Google sign-in is coming soon.");
+            alert(t("login.googleSoon"));
           }}
           className="flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-surface)]/60 text-sm font-medium text-[var(--lunyo-text)] transition hover:bg-[var(--lunyo-surface)]"
         >
-          Continue with Google
+          {t("login.google")}
         </button>
 
         <p className="mt-7 text-center text-sm text-[var(--lunyo-text-muted)]">
-          {isSignup ? "Already have an account?" : "New to Lunyo?"}{" "}
+          {isSignup ? t("login.alreadyHave") : t("login.newTo")}{" "}
           <button
             type="button"
             onClick={() => setMode(isSignup ? "login" : "signup")}
             className="font-medium text-[var(--lunyo-primary)] transition hover:brightness-125"
           >
-            {isSignup ? "Sign in" : "Create account"}
+            {isSignup ? t("login.signIn") : t("login.createAccount")}
           </button>
         </p>
       </motion.div>

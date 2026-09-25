@@ -1,28 +1,11 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-const moments = [
-  {
-    when: "Before your first meeting",
-    copy: "Lunyo checks what matters, summarizes relevant information and prepares the context you need.",
-  },
-  {
-    when: "While you're working",
-    copy: "AI Employees handle repetitive research, summaries, organization and recurring tasks.",
-  },
-  {
-    when: "After a meeting",
-    copy: "Lunyo turns notes into summaries, action items and follow-ups.",
-  },
-  {
-    when: "At the end of the week",
-    copy: "Reports that used to consume your time are already prepared.",
-  },
-] as const;
-
 export default function UseCasesSection() {
   const reduceMotion = useReducedMotion();
+  const { messages } = useLocale();
 
   return (
     <section className="relative bg-transparent py-24 sm:py-28">
@@ -34,14 +17,14 @@ export default function UseCasesSection() {
           transition={{ duration: 0.5, ease }}
           className="max-w-3xl text-3xl font-semibold tracking-tight text-[var(--lunyo-text)] md:text-4xl"
         >
-          What could Lunyo take off your plate today?
+          {messages.useCases.headline}
         </motion.h2>
 
         <div className="relative mt-16 max-w-2xl">
           <div className="pointer-events-none absolute top-2 bottom-2 left-[5px] w-px bg-[var(--lunyo-border)]" />
 
           <ol className="space-y-12 sm:space-y-14">
-            {moments.map((moment, index) => (
+            {messages.useCases.moments.map((moment, index) => (
               <motion.li
                 key={moment.when}
                 initial={reduceMotion ? false : { opacity: 0, y: 14 }}

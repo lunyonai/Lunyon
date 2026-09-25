@@ -7,6 +7,9 @@ import authRoutes from "./routes/auth.js";
 import dataRoutes from "./routes/data.js";
 import paymentsRoutes from "./routes/payments.js";
 import aiRoutes from "./routes/ai.js";
+import employeeRoutes from "./routes/employees.js";
+import workflowRoutes from "./routes/workflows.js";
+import integrationRoutes from "./routes/integrations.js";
 import { handleStripeWebhook } from "./services/stripeService.js";
 
 export function createApp() {
@@ -48,6 +51,9 @@ export function createApp() {
   app.use(express.json({ limit: "1mb" }));
 
   app.use("/api/auth", authRoutes);
+  app.use("/api/employees", employeeRoutes);
+  app.use("/api/workflows", workflowRoutes);
+  app.use("/api/integrations", integrationRoutes);
   app.use("/api", dataRoutes);
   app.use("/api/payments", paymentsRoutes);
   app.use("/api/ai", aiRoutes);

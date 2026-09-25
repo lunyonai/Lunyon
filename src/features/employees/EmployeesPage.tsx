@@ -1,97 +1,79 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bot,
   CheckCircle2,
-  Ellipsis,
-  Mail,
-  MessageSquareText,
   Plus,
-  Send,
   Sparkles,
   UserRound,
-  Workflow,
   X,
 } from "lucide-react";
 import AppShell from "../../layouts/AppShell";
 import { useActivity } from "../activity/ActivityContext";
-
-const employees = [
-  {
-    name: "Email Assistant",
-    role: "Communication",
-    description:
-      "Drafts client emails, follow-ups, and replies using your preferred tone.",
-    icon: Mail,
-    iconColor: "text-blue-400",
-    iconBackground: "bg-blue-500/10",
-    status: "Online",
-    statusClass: "bg-emerald-500/10 text-emerald-400",
-    completed: "248 tasks completed",
-    taskLabel: "Draft a client follow-up",
-    taskPlaceholder: "Example: Follow up with Sarah about the project timeline.",
-  },
-  {
-    name: "Meeting Assistant",
-    role: "Productivity",
-    description:
-      "Turns meetings into concise summaries, decisions, and actionable next steps.",
-    icon: MessageSquareText,
-    iconColor: "text-violet-400",
-    iconBackground: "bg-violet-500/10",
-    status: "Working",
-    statusClass: "bg-blue-500/10 text-blue-400",
-    completed: "126 tasks completed",
-    taskLabel: "Summarize meeting notes",
-    taskPlaceholder: "Paste meeting notes or describe the meeting to summarize.",
-  },
-  {
-    name: "Content Assistant",
-    role: "Marketing",
-    description:
-      "Creates social posts, content ideas, and campaign variations for your brand.",
-    icon: Send,
-    iconColor: "text-amber-400",
-    iconBackground: "bg-amber-500/10",
-    status: "Online",
-    statusClass: "bg-emerald-500/10 text-emerald-400",
-    completed: "94 tasks completed",
-    taskLabel: "Create content",
-    taskPlaceholder: "Example: Write three LinkedIn posts about workflow automation.",
-  },
-  {
-    name: "Workflow Analyst",
-    role: "Operations",
-    description:
-      "Finds repetitive work and recommends automations for your business.",
-    icon: Workflow,
-    iconColor: "text-emerald-400",
-    iconBackground: "bg-emerald-500/10",
-    status: "Online",
-    statusClass: "bg-emerald-500/10 text-emerald-400",
-    completed: "52 recommendations",
-    taskLabel: "Analyze a process",
-    taskPlaceholder: "Describe a repetitive process you want to improve.",
-  },
-];
-
-type Employee = (typeof employees)[number];
+import { useLocale } from "../../i18n/LocaleProvider";
+import { useEmployees } from "./EmployeesContext";
+import EmployeeActionsMenu from "./EmployeeActionsMenu";
+import EmployeeFormPanel from "./EmployeeFormPanel";
+import { employeeIconMap, resolveEmployeeCopy, statusClass } from "./employeeView";
 
 export default function EmployeesPage() {
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const { t } = useLocale();
+  const { employees, loading, error } = useEmployees();
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [task, setTask] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const { addActivity } = useActivity();
+  const { addActivity, activities } = useActivity();
+
+  const views = useMemo(
+    () =>
+      employees.map((employee) => {
+        const copy = resolveEmployeeCopy(employee, t);
+        const visual = employeeIconMap[employee.icon];
+        const kindKey = employee.kind === "custom" ? null : employee.kind;
+        return {
+          employee,
+          ...copy,
+          icon: visual.icon,
+          iconColor: visual.color,
+          iconBackground: visual.background,
+          statusLabel: t(
+            employee.status === "active"
+              ? "app.employees.statusActive"
+              : "app.employees.statusPaused",
+          ),
+          statusClass: statusClass(employee.status),
+          completed: kindKey
+            ? t(`app.employees.${kindKey}Completed`)
+            : t("app.employees.customCompleted"),
+          taskLabel: kindKey
+            ? t(`app.employees.${kindKey}TaskLabel`)
+            : t("app.employees.runTask"),
+          taskPlaceholder: kindKey
+            ? t(`app.employees.${kindKey}Placeholder`)
+            : t("app.employees.customPlaceholder"),
+        };
+      }),
+    [employees, t],
+  );
+
+  const selectedEmployee =
+    views.find((item) => item.employee.id === selectedEmployeeId) ?? null;
+
+  const activeCount = employees.filter((item) => item.status === "active").length;
+  const roleCount = new Set(views.map((item) => item.role)).size;
+  const taskCount = activities.filter((item) => item.type === "employee").length;
+  const workingCount = employees.filter((item) => item.status === "active").length;
 
   function closePanel() {
-    setSelectedEmployee(null);
+    setSelectedEmployeeId(null);
     setTask("");
     setResult(null);
     setIsRunning(false);
   }
 
-  function handleOpenEmployee(employee: Employee) {
-    setSelectedEmployee(employee);
+  function handleOpenEmployee(id: string) {
+    setSelectedEmployeeId(id);
     setTask("");
     setResult(null);
     setIsRunning(false);
@@ -109,12 +91,10 @@ export default function EmployeesPage() {
     window.setTimeout(() => {
       setIsRunning(false);
 
-      setResult(
-        `${employeeName} completed the task successfully. A first draft is ready for review.`,
-      );
+      setResult(t("app.employees.result", { name: employeeName }));
 
       addActivity({
-        title: `${employeeName} completed a task`,
+        title: t("app.employees.activityTitle", { name: employeeName }),
         detail: submittedTask.slice(0, 48),
         type: "employee",
       });
@@ -126,23 +106,24 @@ export default function EmployeesPage() {
       <section>
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-medium text-blue-400">AI TEAM</p>
+            <p className="text-sm font-medium text-blue-400">{t("app.employees.kicker")}</p>
 
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-              AI Employees
+              {t("app.employees.title")}
             </h1>
 
             <p className="mt-2 text-sm text-slate-400">
-              Specialized AI teammates ready to help your business move faster.
+              {t("app.employees.subtitle")}
             </p>
           </div>
 
           <button
             type="button"
-            className="flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500"
+            onClick={() => setCreating(true)}
+            className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500"
           >
             <Plus className="h-4 w-4" />
-            Add AI employee
+            {t("app.employees.add")}
           </button>
         </div>
 
@@ -153,10 +134,10 @@ export default function EmployeesPage() {
             </div>
 
             <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              12
+              {String(employees.length).padStart(2, "0")}
             </p>
 
-            <p className="mt-1 text-sm text-slate-400">AI employees</p>
+            <p className="mt-1 text-sm text-slate-400">{t("app.employees.countLabel")}</p>
           </article>
 
           <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -165,10 +146,10 @@ export default function EmployeesPage() {
             </div>
 
             <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              520
+              {taskCount}
             </p>
 
-            <p className="mt-1 text-sm text-slate-400">Tasks completed</p>
+            <p className="mt-1 text-sm text-slate-400">{t("app.employees.tasksCompleted")}</p>
           </article>
 
           <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -177,10 +158,10 @@ export default function EmployeesPage() {
             </div>
 
             <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              3
+              {workingCount}
             </p>
 
-            <p className="mt-1 text-sm text-slate-400">Working now</p>
+            <p className="mt-1 text-sm text-slate-400">{t("app.employees.workingNow")}</p>
           </article>
 
           <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -189,87 +170,96 @@ export default function EmployeesPage() {
             </div>
 
             <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              4
+              {roleCount}
             </p>
 
-            <p className="mt-1 text-sm text-slate-400">Roles covered</p>
+            <p className="mt-1 text-sm text-slate-400">{t("app.employees.rolesCovered")}</p>
           </article>
         </div>
 
         <section className="mt-8">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
               <h2 className="text-base font-semibold text-white">
-                Your AI team
+                {t("app.employees.teamTitle")}
               </h2>
               <p className="mt-1 text-sm text-slate-400">
-                Manage the AI employees available in your workspace.
+                {t("app.employees.teamSubtitle")}
               </p>
             </div>
 
-            <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-400">
-              4 active
+            <span className="shrink-0 rounded-full border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-400">
+              {t("app.employees.activeCount", { count: activeCount })}
             </span>
           </div>
 
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {employees.map((employee) => {
-              const Icon = employee.icon;
+            {loading && (
+              <p className="text-sm text-slate-500 md:col-span-2">
+                {t("app.common.loading")}
+              </p>
+            )}
+            {!loading && error && (
+              <p className="text-sm text-red-400 md:col-span-2">
+                {t("app.employees.loadError")}
+              </p>
+            )}
+            {!loading && !error && employees.length === 0 && (
+              <p className="text-sm text-slate-500 md:col-span-2">
+                {t("app.employees.emptyTeam")}
+              </p>
+            )}
+            {views.map((item) => {
+              const Icon = item.icon;
 
               return (
                 <article
-                  key={employee.name}
+                  key={item.employee.id}
                   className="group rounded-2xl border border-slate-800 bg-slate-900/60 p-5 transition hover:-translate-y-1 hover:border-slate-700 hover:bg-slate-900"
                 >
                   <div className="flex items-start justify-between">
                     <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-xl ${employee.iconBackground}`}
+                      className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.iconBackground}`}
                     >
-                      <Icon className={`h-5 w-5 ${employee.iconColor}`} />
+                      <Icon className={`h-5 w-5 ${item.iconColor}`} />
                     </div>
 
-                    <button
-                      type="button"
-                      aria-label={`Options for ${employee.name}`}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 opacity-0 transition hover:bg-slate-800 hover:text-slate-200 group-hover:opacity-100"
-                    >
-                      <Ellipsis className="h-4 w-4" />
-                    </button>
+                    <EmployeeActionsMenu employee={item.employee} />
                   </div>
 
                   <div className="mt-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-semibold text-white">
-                        {employee.name}
+                        {item.name}
                       </h3>
 
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${employee.statusClass}`}
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${item.statusClass}`}
                       >
-                        {employee.status}
+                        {item.statusLabel}
                       </span>
                     </div>
 
                     <p className="mt-1 text-sm font-medium text-blue-400">
-                      {employee.role}
+                      {item.role}
                     </p>
 
                     <p className="mt-3 text-sm leading-6 text-slate-400">
-                      {employee.description}
+                      {item.description}
                     </p>
                   </div>
 
                   <div className="mt-5 flex items-center justify-between border-t border-slate-800 pt-4">
                     <span className="text-xs text-slate-500">
-                      {employee.completed}
+                      {item.completed}
                     </span>
 
                     <button
                       type="button"
-                      onClick={() => handleOpenEmployee(employee)}
+                      onClick={() => handleOpenEmployee(item.employee.id)}
                       className="text-xs font-medium text-blue-400 transition hover:text-blue-300"
                     >
-                      Open employee
+                      {t("app.employees.open")}
                     </button>
                   </div>
                 </article>
@@ -279,11 +269,13 @@ export default function EmployeesPage() {
         </section>
       </section>
 
+      {creating && <EmployeeFormPanel onClose={() => setCreating(false)} />}
+
       {selectedEmployee && (
         <div className="fixed inset-0 z-50">
           <button
             type="button"
-            aria-label="Close employee panel"
+            aria-label={t("app.employees.closePanel")}
             onClick={closePanel}
             className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
           />
@@ -311,7 +303,7 @@ export default function EmployeesPage() {
 
               <button
                 type="button"
-                aria-label="Close panel"
+                aria-label={t("app.employees.close")}
                 onClick={closePanel}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-slate-200"
               >
@@ -323,7 +315,7 @@ export default function EmployeesPage() {
               <span
                 className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${selectedEmployee.statusClass}`}
               >
-                {selectedEmployee.status}
+                {selectedEmployee.statusLabel}
               </span>
 
               <p className="mt-4 text-sm leading-6 text-slate-400">
@@ -348,7 +340,7 @@ export default function EmployeesPage() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                     <p className="text-sm font-medium text-emerald-300">
-                      Task completed
+                      {t("app.employees.taskCompleted")}
                     </p>
                   </div>
 
@@ -363,17 +355,17 @@ export default function EmployeesPage() {
               <button
                 type="button"
                 onClick={handleRunTask}
-                disabled={!task.trim() || isRunning}
+                disabled={!task.trim() || isRunning || selectedEmployee.employee.status === "paused"}
                 className="flex h-11 w-full items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <span className="flex items-center gap-2" translate="no">
+                <span className="flex items-center gap-2">
                   {isRunning ? (
                     <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                   ) : (
                     <Sparkles className="h-4 w-4" />
                   )}
 
-                  <span>{isRunning ? "Working..." : "Run task"}</span>
+                  <span>{isRunning ? t("app.employees.working") : t("app.employees.runTask")}</span>
                 </span>
               </button>
             </div>

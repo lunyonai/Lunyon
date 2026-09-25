@@ -13,7 +13,11 @@ dist-ssr
 *.local
 .env
 .env.local
+.env.production
+.env*.production
 backend/.env
+backend/.env.production
+backend/.env*.local
 backend/dist
 backend/node_modules
 

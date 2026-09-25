@@ -15,58 +15,61 @@ import {
 } from "lucide-react";
 import AppShell from "../../layouts/AppShell";
 import { useActivity } from "../activity/ActivityContext";
+import { useLocale } from "../../i18n/LocaleProvider";
 
-const prompts = [
+const promptDefs = [
   {
-    title: "Client follow-up email",
-    description:
-      "Write a concise, professional follow-up after a client meeting.",
-    category: "Sales",
+    id: "followUp",
     uses: "1.2k",
     icon: Mail,
     iconColor: "text-blue-400",
     iconBackground: "bg-blue-500/10",
-    inputLabel: "Meeting context",
-    inputPlaceholder:
-      "Example: Met Sarah today to discuss the updated project timeline and next milestones.",
+    categoryKey: "catSales",
   },
   {
-    title: "Meeting notes to actions",
-    description:
-      "Turn unstructured meeting notes into clear decisions and next steps.",
-    category: "Productivity",
+    id: "notes",
     uses: "986",
     icon: MessageSquareText,
     iconColor: "text-violet-400",
     iconBackground: "bg-violet-500/10",
-    inputLabel: "Meeting notes",
-    inputPlaceholder:
-      "Paste your meeting notes here and the AI will organize decisions and actions.",
+    categoryKey: "catProductivity",
   },
   {
-    title: "Weekly project update",
-    description:
-      "Create a concise status update for stakeholders and your team.",
-    category: "Management",
+    id: "weekly",
     uses: "742",
     icon: Clock3,
     iconColor: "text-emerald-400",
     iconBackground: "bg-emerald-500/10",
-    inputLabel: "Project progress",
-    inputPlaceholder:
-      "Example: Completed onboarding screens, fixed 12 bugs, and started API integration.",
+    categoryKey: "catManagement",
   },
-];
+] as const;
 
-type Prompt = (typeof prompts)[number];
+type PromptId = (typeof promptDefs)[number]["id"];
 
 export default function PromptLibraryPage() {
+  const { t } = useLocale();
   const [search, setSearch] = useState("");
-  const [selectedPrompt, setSelectedPrompt] = useState<Prompt | null>(null);
+  const [selectedPromptId, setSelectedPromptId] = useState<PromptId | null>(null);
   const [context, setContext] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const { addActivity } = useActivity();
+
+  const prompts = useMemo(
+    () =>
+      promptDefs.map((def) => ({
+        ...def,
+        title: t(`app.prompts.${def.id}Title`),
+        description: t(`app.prompts.${def.id}Description`),
+        category: t(`app.prompts.${def.categoryKey}`),
+        inputLabel: t(`app.prompts.${def.id}Label`),
+        inputPlaceholder: t(`app.prompts.${def.id}Placeholder`),
+      })),
+    [t],
+  );
+
+  const selectedPrompt =
+    prompts.find((prompt) => prompt.id === selectedPromptId) ?? null;
 
   const filteredPrompts = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -78,60 +81,58 @@ export default function PromptLibraryPage() {
         value.toLowerCase().includes(normalizedSearch),
       ),
     );
-  }, [search]);
+  }, [prompts, search]);
 
   function closePanel() {
-    setSelectedPrompt(null);
+    setSelectedPromptId(null);
     setContext("");
     setResult(null);
     setIsRunning(false);
   }
 
   function handleRunPrompt() {
-  if (!selectedPrompt || !context.trim() || isRunning) return;
+    if (!selectedPrompt || !context.trim() || isRunning) return;
 
-  setIsRunning(true);
-  setResult(null);
+    setIsRunning(true);
+    setResult(null);
 
-  window.setTimeout(() => {
-    const promptTitle = selectedPrompt.title;
+    window.setTimeout(() => {
+      const promptTitle = selectedPrompt.title;
 
-    setIsRunning(false);
+      setIsRunning(false);
 
-    setResult(
-      `Your ${promptTitle.toLowerCase()} is ready. The AI used your context to create a clear first draft that you can review and refine.`,
-    );
+      setResult(t("app.prompts.result", { title: promptTitle }));
 
-    addActivity({
-  title: `${promptTitle} generated`,
-  detail: context.trim().slice(0, 48),
-  type: "prompt",
-});
-  }, 1400);
-}
+      addActivity({
+        title: t("app.prompts.activityTitle", { title: promptTitle }),
+        detail: context.trim().slice(0, 48),
+        type: "prompt",
+      });
+    }, 1400);
+  }
 
   return (
     <AppShell>
       <section>
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-medium text-blue-400">PROMPT ENGINE</p>
+            <p className="text-sm font-medium text-blue-400">{t("app.prompts.kicker")}</p>
 
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-              Prompt Library
+              {t("app.prompts.title")}
             </h1>
 
             <p className="mt-2 text-sm text-slate-400">
-              Reusable AI instructions built for the work you do every day.
+              {t("app.prompts.subtitle")}
             </p>
           </div>
 
           <button
             type="button"
-            className="flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500"
+            className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500"
           >
             <Plus className="h-4 w-4" />
-            New prompt
+            {t("app.prompts.newPrompt")}
           </button>
         </div>
 
@@ -143,7 +144,7 @@ export default function PromptLibraryPage() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search prompts..."
+              placeholder={t("app.prompts.search")}
               className="h-11 w-full rounded-xl border border-slate-800 bg-slate-900/60 px-10 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
             />
           </div>
@@ -153,7 +154,7 @@ export default function PromptLibraryPage() {
             className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
           >
             <BookOpen className="h-4 w-4" />
-            All categories
+            {t("app.prompts.allCategories")}
           </button>
         </div>
 
@@ -163,7 +164,7 @@ export default function PromptLibraryPage() {
 
             return (
               <article
-                key={prompt.title}
+                key={prompt.id}
                 className="group flex min-h-56 flex-col rounded-2xl border border-slate-800 bg-slate-900/60 p-5 transition hover:-translate-y-1 hover:border-slate-700 hover:bg-slate-900"
               >
                 <div className="flex items-start justify-between">
@@ -175,8 +176,8 @@ export default function PromptLibraryPage() {
 
                   <button
                     type="button"
-                    onClick={() => setSelectedPrompt(prompt)}
-                    aria-label={`Use ${prompt.title}`}
+                    onClick={() => setSelectedPromptId(prompt.id)}
+                    aria-label={t("app.prompts.useAria", { title: prompt.title })}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 opacity-0 transition hover:bg-slate-800 hover:text-slate-200 group-hover:opacity-100"
                   >
                     <ArrowUpRight className="h-4 w-4" />
@@ -199,16 +200,16 @@ export default function PromptLibraryPage() {
 
                 <div className="mt-auto flex items-center justify-between border-t border-slate-800 pt-4">
                   <span className="text-xs text-slate-500">
-                    Used {prompt.uses} times
+                    {t("app.prompts.usedTimes", { uses: prompt.uses })}
                   </span>
 
                   <button
                     type="button"
-                    onClick={() => setSelectedPrompt(prompt)}
+                    onClick={() => setSelectedPromptId(prompt.id)}
                     className="flex items-center gap-1.5 text-xs font-medium text-blue-400 transition hover:text-blue-300"
                   >
                     <Copy className="h-3.5 w-3.5" />
-                    Use prompt
+                    {t("app.prompts.usePrompt")}
                   </button>
                 </div>
               </article>
@@ -219,10 +220,10 @@ export default function PromptLibraryPage() {
             <div className="col-span-full rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 px-6 py-14 text-center">
               <Search className="mx-auto h-6 w-6 text-slate-500" />
               <p className="mt-4 text-sm font-semibold text-slate-300">
-                No prompts found
+                {t("app.prompts.emptyTitle")}
               </p>
               <p className="mt-2 text-sm text-slate-500">
-                Try a different search term.
+                {t("app.prompts.emptyBody")}
               </p>
             </div>
           )}
@@ -236,11 +237,11 @@ export default function PromptLibraryPage() {
             </div>
 
             <p className="mt-4 text-sm font-semibold text-slate-200">
-              Create a custom prompt
+              {t("app.prompts.createTitle")}
             </p>
 
             <p className="mt-2 max-w-52 text-xs leading-5 text-slate-500">
-              Save an instruction your AI team can reuse anytime.
+              {t("app.prompts.createBody")}
             </p>
           </button>
         </div>
@@ -250,7 +251,7 @@ export default function PromptLibraryPage() {
         <div className="fixed inset-0 z-50">
           <button
             type="button"
-            aria-label="Close prompt panel"
+            aria-label={t("app.prompts.closePanel")}
             onClick={closePanel}
             className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
           />
@@ -278,7 +279,7 @@ export default function PromptLibraryPage() {
 
               <button
                 type="button"
-                aria-label="Close panel"
+                aria-label={t("app.prompts.close")}
                 onClick={closePanel}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-slate-200"
               >
@@ -309,7 +310,7 @@ export default function PromptLibraryPage() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                     <p className="text-sm font-medium text-emerald-300">
-                      Draft generated
+                      {t("app.prompts.draftGenerated")}
                     </p>
                   </div>
 
@@ -330,12 +331,12 @@ export default function PromptLibraryPage() {
     {isRunning ? (
       <span className="flex items-center gap-2">
         <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-        Generating...
+        {t("app.prompts.generating")}
       </span>
     ) : (
       <span className="flex items-center gap-2">
         <FileText className="h-4 w-4" />
-        Generate draft
+        {t("app.prompts.generateDraft")}
       </span>
     )}
   </button>

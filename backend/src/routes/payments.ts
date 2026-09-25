@@ -4,12 +4,16 @@ import { requireAuth } from "../middleware/auth.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { env } from "../config/env.js";
 import { createCheckoutSession } from "../services/stripeService.js";
-import {
-  capturePayPalOrder,
-  createPayPalOrder,
-} from "../services/paypalService.js";
 
 const router = Router();
+
+function sameOriginUrl(value: string | undefined, fallback: string) {
+  if (!value) return fallback;
+  if (!value.startsWith(env.FRONTEND_URL)) {
+    throw new AppError("Redirect URL must match FRONTEND_URL", 400);
+  }
+  return value;
+}
 
 router.post("/stripe/checkout", requireAuth, async (req, res, next) => {
   try {
@@ -17,18 +21,23 @@ router.post("/stripe/checkout", requireAuth, async (req, res, next) => {
 
     const body = z
       .object({
-        priceId: z.string().min(1),
         successUrl: z.string().url().optional(),
         cancelUrl: z.string().url().optional(),
       })
-      .parse(req.body);
+      .strict()
+      .parse(req.body ?? {});
 
     const result = await createCheckoutSession({
       userId: req.user.id,
       email: req.user.email,
-      priceId: body.priceId,
-      successUrl: body.successUrl ?? `${env.FRONTEND_URL}/dashboard?paid=1`,
-      cancelUrl: body.cancelUrl ?? `${env.FRONTEND_URL}/dashboard?canceled=1`,
+      successUrl: sameOriginUrl(
+        body.successUrl,
+        `${env.FRONTEND_URL}/dashboard?paid=1`,
+      ),
+      cancelUrl: sameOriginUrl(
+        body.cancelUrl,
+        `${env.FRONTEND_URL}/dashboard?canceled=1`,
+      ),
     });
 
     res.json(result);
@@ -37,41 +46,16 @@ router.post("/stripe/checkout", requireAuth, async (req, res, next) => {
   }
 });
 
-router.post("/paypal/create-order", requireAuth, async (req, res, next) => {
-  try {
-    if (!req.user) throw new AppError("Unauthorized", 401);
-
-    const body = z
-      .object({
-        amount: z.string().min(1),
-        currency: z.string().optional(),
-        returnUrl: z.string().url().optional(),
-        cancelUrl: z.string().url().optional(),
-      })
-      .parse(req.body);
-
-    const result = await createPayPalOrder({
-      userId: req.user.id,
-      amount: body.amount,
-      currency: body.currency,
-      returnUrl: body.returnUrl ?? `${env.FRONTEND_URL}/dashboard?paypal=1`,
-      cancelUrl: body.cancelUrl ?? `${env.FRONTEND_URL}/dashboard?canceled=1`,
-    });
-
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+router.post("/paypal/create-order", requireAuth, (_req, res) => {
+  res.status(410).json({
+    error: "PayPal checkout is disabled. Lunyon uses Stripe as the payment path.",
+  });
 });
 
-router.post("/paypal/capture", requireAuth, async (req, res, next) => {
-  try {
-    const body = z.object({ orderId: z.string().min(1) }).parse(req.body);
-    const result = await capturePayPalOrder(body.orderId);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
+router.post("/paypal/capture", requireAuth, (_req, res) => {
+  res.status(410).json({
+    error: "PayPal capture is disabled. Lunyon uses Stripe as the payment path.",
+  });
 });
 
 export default router;

@@ -1,6 +1,6 @@
-# Lunyo
+# Lunyon
 
-Plataforma Lunyo — frontend React + backend Node/TypeScript + PostgreSQL (Supabase).
+Plataforma Lunyon — frontend React + backend Node/TypeScript + PostgreSQL (Supabase).
 
 ## Estrutura
 

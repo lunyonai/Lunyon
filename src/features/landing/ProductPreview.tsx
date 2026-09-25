@@ -1,21 +1,24 @@
 import { Check } from "lucide-react";
 import { motion } from "framer-motion";
-
-const metrics = [
-  { label: "Tasks completed", value: "14" },
-  { label: "Emails handled", value: "8" },
-  { label: "Summaries created", value: "3" },
-];
-
-const activity = [
-  { title: "Weekly report prepared", time: "2m" },
-  { title: "Client follow-up drafted", time: "11m" },
-  { title: "Meeting notes summarized", time: "28m" },
-];
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export default function ProductPreview() {
+  const { t } = useLocale();
+
+  const metrics = [
+    { label: t("preview.tasksCompleted"), value: "14" },
+    { label: t("preview.emailsHandled"), value: "8" },
+    { label: t("preview.summariesCreated"), value: "3" },
+  ];
+
+  const activity = [
+    { title: t("preview.weeklyReport"), time: "2m" },
+    { title: t("preview.clientFollowUp"), time: "11m" },
+    { title: t("preview.meetingNotes"), time: "28m" },
+  ];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -27,9 +30,11 @@ export default function ProductPreview() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-[var(--lunyo-text)]">
-            Lunyo Workspace
+            {t("preview.workspace")}
           </p>
-          <p className="mt-0.5 text-xs text-[var(--lunyo-text-muted)]">Today</p>
+          <p className="mt-0.5 text-xs text-[var(--lunyo-text-muted)]">
+            {t("preview.today")}
+          </p>
         </div>
 
         <div className="flex items-center gap-2 rounded-md border border-[var(--lunyo-border)] px-2.5 py-1.5">
@@ -38,20 +43,20 @@ export default function ProductPreview() {
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--lunyo-primary)]" />
           </span>
           <span className="text-[11px] font-medium text-[var(--lunyo-text-muted)]">
-            Lunyo is working
+            {t("preview.working")}
           </span>
         </div>
       </div>
 
       <div className="mt-5">
         <p className="text-[11px] font-medium tracking-[0.08em] text-[var(--lunyo-text-muted)]">
-          TIME RECLAIMED TODAY
+          {t("preview.timeReclaimed")}
         </p>
         <p className="mt-2 text-4xl font-semibold tracking-tight text-[var(--lunyo-text)] sm:text-5xl">
           1h 42m
         </p>
         <p className="mt-2 text-xs text-[var(--lunyo-success)]/80">
-          +24 min vs yesterday
+          {t("preview.vsYesterday")}
         </p>
       </div>
 

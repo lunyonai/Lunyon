@@ -1,36 +1,16 @@
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
-
-const stages = [
-  {
-    n: "01",
-    title: "You describe the work.",
-    body: "Prompts give Lunyo the context and instructions it needs.",
-  },
-  {
-    n: "02",
-    title: "Lunyo builds the process.",
-    body: "Workflows connect the steps that need to happen.",
-  },
-  {
-    n: "03",
-    title: "AI Employees do the work.",
-    body: "Specialized AI workers execute recurring tasks.",
-  },
-  {
-    n: "04",
-    title: "You get the outcome.",
-    body: "Not more AI conversations. Work completed.",
-  },
-] as const;
 
 export default function HowItWorksSection() {
   const reduceMotion = useReducedMotion();
   const trackRef = useRef<HTMLDivElement>(null);
   const inView = useInView(trackRef, { once: false, margin: "-80px" });
   const animatePulse = Boolean(inView && !reduceMotion);
+  const { messages } = useLocale();
+  const stages = messages.how.stages;
 
   return (
     <section
@@ -45,7 +25,7 @@ export default function HowItWorksSection() {
           transition={{ duration: 0.5, ease }}
           className="text-3xl font-semibold tracking-tight text-[var(--lunyo-text)] md:text-4xl"
         >
-          From instruction to outcome.
+          {messages.how.headline}
         </motion.h2>
 
         <div ref={trackRef} className="relative mt-16">

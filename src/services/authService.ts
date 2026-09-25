@@ -12,15 +12,34 @@ export const authService = {
     });
   },
 
-  signUp(email: string, password: string) {
+  signUp(email: string, password: string, fullName?: string) {
     return supabase.auth.signUp({
       email,
       password,
+      options: fullName
+        ? {
+            data: { full_name: fullName },
+          }
+        : undefined,
     });
   },
 
   signOut() {
     return supabase.auth.signOut();
+  },
+
+  updateProfile(fullName: string) {
+    return supabase.auth.updateUser({
+      data: { full_name: fullName },
+    });
+  },
+
+  updatePassword(password: string) {
+    return supabase.auth.updateUser({ password });
+  },
+
+  resetPassword(email: string) {
+    return supabase.auth.resetPasswordForEmail(email);
   },
 
   getSession() {

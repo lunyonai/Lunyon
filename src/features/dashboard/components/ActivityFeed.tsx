@@ -7,13 +7,29 @@ import {
 } from "lucide-react";
 
 import { useActivity } from "../../activity/ActivityContext";
+import { useLocale } from "../../../i18n/LocaleProvider";
 
 type Filter = "all" | "prompt" | "workflow" | "employee";
 
-function relative(date: Date) {
+const seedCopy: Record<string, { title: string; detail: string }> = {
+  "initial-1": {
+    title: "app.activity.seed1Title",
+    detail: "app.activity.seed1Detail",
+  },
+  "initial-2": {
+    title: "app.activity.seed2Title",
+    detail: "app.activity.seed2Detail",
+  },
+  "initial-3": {
+    title: "app.activity.seed3Title",
+    detail: "app.activity.seed3Detail",
+  },
+};
+
+function relative(date: Date, justNow: string) {
   const diff = Date.now() - date.getTime();
 
-  if (diff < 60000) return "Just now";
+  if (diff < 60000) return justNow;
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
 
@@ -22,8 +38,16 @@ function relative(date: Date) {
 
 export default function ActivityFeed() {
   const { activities } = useActivity();
+  const { t } = useLocale();
 
   const [filter, setFilter] = useState<Filter>("all");
+
+  const filters: { id: Filter; label: string }[] = [
+    { id: "all", label: t("app.dashboard.filterAll") },
+    { id: "prompt", label: t("app.dashboard.filterPrompt") },
+    { id: "workflow", label: t("app.dashboard.filterWorkflow") },
+    { id: "employee", label: t("app.dashboard.filterEmployee") },
+  ];
 
   const data = useMemo(() => {
 
@@ -41,31 +65,31 @@ export default function ActivityFeed() {
         <div>
 
           <h2 className="text-lg font-semibold text-white">
-            Operations Feed
+            {t("app.dashboard.feedTitle")}
           </h2>
 
           <p className="text-sm text-slate-400">
-            Everything your AI system is doing.
+            {t("app.dashboard.feedSubtitle")}
           </p>
 
         </div>
 
       </div>
 
-      <div className="mt-5 flex gap-2">
+      <div className="mt-5 flex flex-wrap gap-2">
 
-        {["all","prompt","workflow","employee"].map(item=>(
+        {filters.map(item=>(
 
           <button
-            key={item}
-            onClick={()=>setFilter(item as Filter)}
+            key={item.id}
+            onClick={()=>setFilter(item.id)}
             className={`rounded-full px-3 py-1.5 text-xs ${
-              filter===item
+              filter===item.id
                 ? "bg-blue-600 text-white"
                 : "bg-slate-800 text-slate-400"
             }`}
           >
-            {item}
+            {item.label}
 
           </button>
 
@@ -84,6 +108,8 @@ export default function ActivityFeed() {
               ? Mail
               : MessageSquareText;
 
+          const copy = seedCopy[activity.id];
+
           return (
 
             <div
@@ -97,23 +123,23 @@ export default function ActivityFeed() {
 
               </div>
 
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
 
                 <p className="text-sm font-medium text-white">
-                  {activity.title}
+                  {copy ? t(copy.title) : activity.title}
                 </p>
 
-                <p className="text-xs text-slate-500">
-                  {activity.detail}
+                <p className="truncate text-xs text-slate-500">
+                  {copy ? t(copy.detail) : activity.detail}
                 </p>
 
               </div>
 
-              <span className="text-xs text-slate-500">
-                {relative(activity.createdAt)}
+              <span className="shrink-0 text-xs text-slate-500">
+                {relative(activity.createdAt, t("app.dashboard.justNow"))}
               </span>
 
-              <ArrowUpRight className="h-4 w-4 text-slate-600"/>
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-600"/>
 
             </div>
 

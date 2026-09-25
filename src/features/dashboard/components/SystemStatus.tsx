@@ -5,49 +5,52 @@ import {
   Mail,
   Workflow,
 } from "lucide-react";
-
-const services = [
-  {
-    name: "Email Assistant",
-    status: "Running",
-    progress: 92,
-    icon: Mail,
-  },
-  {
-    name: "Workflow Engine",
-    status: "Processing",
-    progress: 61,
-    icon: Workflow,
-  },
-  {
-    name: "Sales Employee",
-    status: "Completed",
-    progress: 100,
-    icon: Bot,
-  },
-];
+import { useLocale } from "../../../i18n/LocaleProvider";
 
 export default function SystemStatus() {
+  const { t } = useLocale();
+
+  const services = [
+    {
+      name: t("app.dashboard.emailAssistant"),
+      status: t("app.dashboard.statusRunning"),
+      progress: 92,
+      icon: Mail,
+    },
+    {
+      name: t("app.dashboard.workflowEngine"),
+      status: t("app.dashboard.statusProcessing"),
+      progress: 61,
+      icon: Workflow,
+    },
+    {
+      name: t("app.dashboard.salesEmployee"),
+      status: t("app.dashboard.statusCompleted"),
+      progress: 100,
+      icon: Bot,
+    },
+  ];
+
   return (
     <section className="rounded-3xl border border-blue-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-6">
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
 
         <div>
 
           <p className="text-xs font-semibold tracking-[0.25em] text-blue-400 uppercase">
-            AI SYSTEM
+            {t("app.dashboard.systemKicker")}
           </p>
 
           <h2 className="mt-2 text-2xl font-semibold text-white">
-            Online
+            {t("app.dashboard.online")}
           </h2>
 
         </div>
 
-        <span className="flex items-center gap-2 text-sm text-emerald-400">
+        <span className="flex shrink-0 items-center gap-2 text-sm text-emerald-400">
           <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"/>
-          Healthy
+          {t("app.dashboard.healthy")}
         </span>
 
       </div>
@@ -62,11 +65,11 @@ export default function SystemStatus() {
 
             <div key={service.name}>
 
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-3">
 
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
 
-                  <Icon className="h-4 w-4 text-blue-400"/>
+                  <Icon className="h-4 w-4 shrink-0 text-blue-400"/>
 
                   <span className="text-sm text-white">
                     {service.name}
@@ -74,7 +77,7 @@ export default function SystemStatus() {
 
                 </div>
 
-                <span className="text-xs text-slate-400">
+                <span className="shrink-0 text-xs text-slate-400">
                   {service.status}
                 </span>
 
@@ -108,7 +111,7 @@ export default function SystemStatus() {
           </p>
 
           <p className="text-xs text-slate-500">
-            CPU Usage
+            {t("app.dashboard.cpu")}
           </p>
 
         </div>
@@ -122,7 +125,7 @@ export default function SystemStatus() {
           </p>
 
           <p className="text-xs text-slate-500">
-            Memory
+            {t("app.dashboard.memory")}
           </p>
 
         </div>

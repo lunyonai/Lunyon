@@ -1,18 +1,12 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-const work = [
-  "Replying to repetitive emails",
-  "Summarizing meetings",
-  "Preparing weekly reports",
-  "Researching information",
-  "Following up with clients",
-  "Turning notes into action items",
-];
-
 export default function ProblemSection() {
   const reduceMotion = useReducedMotion();
+  const { messages } = useLocale();
+  const copy = messages.problem;
 
   return (
     <section className="relative bg-transparent py-24 sm:py-28">
@@ -24,7 +18,7 @@ export default function ProblemSection() {
           transition={{ duration: 0.5, ease }}
           className="max-w-3xl text-3xl font-semibold tracking-tight text-[var(--lunyo-text)] md:text-4xl"
         >
-          Your day is full of work that shouldn&apos;t need you.
+          {copy.headline}
         </motion.h2>
 
         <motion.p
@@ -34,11 +28,11 @@ export default function ProblemSection() {
           transition={{ duration: 0.5, delay: 0.08, ease }}
           className="mt-5 max-w-xl text-base leading-7 text-[var(--lunyo-text-muted)] sm:text-lg"
         >
-          Important work often gets buried under repetitive work.
+          {copy.supporting}
         </motion.p>
 
         <ul className="mt-14 max-w-2xl">
-          {work.map((item, index) => (
+          {copy.items.map((item, index) => (
             <motion.li
               key={item}
               initial={reduceMotion ? false : { opacity: 0, y: 10 }}
@@ -68,7 +62,7 @@ export default function ProblemSection() {
           transition={{ duration: 0.5, delay: 0.12, ease }}
           className="mt-14 max-w-xl text-xl font-medium tracking-tight text-[var(--lunyo-text)] sm:text-2xl"
         >
-          Lunyo takes that work off your plate.
+          {copy.close}
         </motion.p>
       </div>
     </section>
