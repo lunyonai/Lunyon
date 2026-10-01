@@ -6,14 +6,15 @@ import {
   Search,
   Users,
 } from "lucide-react";
+import { useLocale } from "../../../i18n/LocaleProvider";
 
 const workers = [
-  { id: "email", label: "Email", icon: Mail, x: 18, y: 28 },
-  { id: "research", label: "Research", icon: Search, x: 50, y: 12 },
-  { id: "meetings", label: "Meetings", icon: Users, x: 82, y: 28 },
-  { id: "reports", label: "Reports", icon: FileText, x: 32, y: 72 },
-  { id: "analytics", label: "Analytics", icon: BarChart3, x: 68, y: 72 },
-] as const;
+  { id: "email" as const, icon: Mail, x: 18, y: 28 },
+  { id: "research" as const, icon: Search, x: 50, y: 12 },
+  { id: "meetings" as const, icon: Users, x: 82, y: 28 },
+  { id: "reports" as const, icon: FileText, x: 32, y: 72 },
+  { id: "analytics" as const, icon: BarChart3, x: 68, y: 72 },
+];
 
 const connections: [number, number][] = [
   [0, 1],
@@ -25,6 +26,7 @@ const connections: [number, number][] = [
 
 export default function EmployeesDemo() {
   const [activeEdge, setActiveEdge] = useState(0);
+  const { t } = useLocale();
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -40,7 +42,7 @@ export default function EmployeesDemo() {
   return (
     <div className="space-y-4">
       <p className="text-sm font-medium text-[var(--lunyo-text)]">
-        Specialized workers, connected
+        {t("demo.employeesTitle")}
       </p>
 
       <div
@@ -88,7 +90,7 @@ export default function EmployeesDemo() {
                 <Icon className="h-3.5 w-3.5 text-[var(--lunyo-text-muted)]" />
               </div>
               <span className="text-[10px] text-[var(--lunyo-text-muted)]">
-                {worker.label}
+                {t(`workforce.${worker.id}`)}
               </span>
             </div>
           );
@@ -96,8 +98,7 @@ export default function EmployeesDemo() {
       </div>
 
       <p className="text-xs leading-5 text-[var(--lunyo-text-muted)]">
-        Each capability handles a distinct type of work. Together they keep
-        information moving without pulling you back into the details.
+        {t("demo.employeesBody")}
       </p>
     </div>
   );

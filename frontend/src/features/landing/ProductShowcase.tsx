@@ -3,14 +3,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import PromptLibraryDemo from "./demos/PromptLibraryDemo";
 import WorkflowsDemo from "./demos/WorkflowsDemo";
 import EmployeesDemo from "./demos/EmployeesDemo";
+import { useLocale } from "../../i18n/LocaleProvider";
 
-const tabs = [
-  { id: "prompts" as const, label: "Prompt Library" },
-  { id: "workflows" as const, label: "Workflows" },
-  { id: "employees" as const, label: "AI Employees" },
-];
-
-type TabId = (typeof tabs)[number]["id"];
+type TabId = "prompts" | "workflows" | "employees";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -27,6 +22,12 @@ function DemoPanel({ tab }: { tab: TabId }) {
 
 export default function ProductShowcase() {
   const [activeTab, setActiveTab] = useState<TabId>("prompts");
+  const { t } = useLocale();
+  const tabs = [
+    { id: "prompts" as const, label: t("product.tabPrompts") },
+    { id: "workflows" as const, label: t("product.tabWorkflows") },
+    { id: "employees" as const, label: t("product.tabEmployees") },
+  ];
 
   return (
     <div className="mt-12">

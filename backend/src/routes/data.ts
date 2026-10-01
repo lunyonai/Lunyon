@@ -11,10 +11,43 @@ import {
   updateSettings,
   upsertCourseProgress,
 } from "../services/dataService.js";
+import {
+  getNormalizedEntitlement,
+  getNormalizedMe,
+} from "../services/identityService.js";
 
 const router = Router();
 
+const settingsUpdateSchema = z
+  .object({
+    theme: z.enum(["dark", "light"]).optional(),
+    locale: z.enum(["en", "pt", "es", "pt-BR"]).optional(),
+    notifications_enabled: z.boolean().optional(),
+    preferred_ai_provider: z.enum(["openai", "anthropic", "gemini"]).optional(),
+  })
+  .strict();
+
 router.use(requireAuth);
+
+router.get("/me", async (req, res, next) => {
+  try {
+    if (!req.user) throw new AppError("Unauthorized", 401);
+    const me = await getNormalizedMe(req.user);
+    res.json(me);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/entitlement", async (req, res, next) => {
+  try {
+    if (!req.user) throw new AppError("Unauthorized", 401);
+    const entitlement = await getNormalizedEntitlement(req.user.id);
+    res.json(entitlement);
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get("/prompts", async (req, res, next) => {
   try {
@@ -45,6 +78,7 @@ router.post("/prompts", async (req, res, next) => {
   }
 });
 
+/** @deprecated Legacy course product. Not used by the Lunyon app. */
 router.get("/templates", async (req, res, next) => {
   try {
     if (!req.user) throw new AppError("Unauthorized", 401);
@@ -55,6 +89,7 @@ router.get("/templates", async (req, res, next) => {
   }
 });
 
+/** @deprecated Legacy course product. Not used by the Lunyon app. */
 router.get("/course-progress", async (req, res, next) => {
   try {
     if (!req.user) throw new AppError("Unauthorized", 401);
@@ -65,6 +100,7 @@ router.get("/course-progress", async (req, res, next) => {
   }
 });
 
+/** @deprecated Legacy course product. Not used by the Lunyon app. */
 router.put("/course-progress", async (req, res, next) => {
   try {
     if (!req.user) throw new AppError("Unauthorized", 401);
@@ -99,7 +135,8 @@ router.get("/settings", async (req, res, next) => {
 router.put("/settings", async (req, res, next) => {
   try {
     if (!req.user) throw new AppError("Unauthorized", 401);
-    const data = await updateSettings(req.user.id, req.body);
+    const body = settingsUpdateSchema.parse(req.body ?? {});
+    const data = await updateSettings(req.user.id, body);
     res.json(data);
   } catch (err) {
     next(err);

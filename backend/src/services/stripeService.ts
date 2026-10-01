@@ -13,16 +13,19 @@ function getStripe() {
 export async function createCheckoutSession(params: {
   userId: string;
   email: string;
-  priceId: string;
   successUrl: string;
   cancelUrl: string;
 }) {
+  if (!env.STRIPE_PRICE_ID) {
+    throw new AppError("Stripe price is not configured", 503);
+  }
+
   const stripe = getStripe();
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
     customer_email: params.email,
-    line_items: [{ price: params.priceId, quantity: 1 }],
+    line_items: [{ price: env.STRIPE_PRICE_ID, quantity: 1 }],
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
     metadata: { userId: params.userId },

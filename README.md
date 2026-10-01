@@ -21,9 +21,25 @@ pnpm dev
 **Backend:**
 ```bash
 cd backend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
+
+O backend precisa das migrações SQL aplicadas no Supabase antes de subir — veja
+`backend/README.md`.
+
+## Rotas públicas e idiomas
+
+A landing e o login são traduzidos a partir de `frontend/src/i18n/`:
+
+| Idioma | Landing | Login |
+|--------|---------|-------|
+| Inglês | `/` | `/login` |
+| Português | `/pt` | `/pt/login` |
+| Espanhol | `/es` | `/es/login` |
+
+As rotas internas (`/dashboard`, `/employees`, `/prompts`, `/workflows`, `/settings`)
+não têm prefixo de idioma. Convenções de marca e i18n estão em `AGENTS.md`.
 
 ## Deploy (Vercel)
 

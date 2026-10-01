@@ -3,18 +3,23 @@ import { Link, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "../auth/components/Logo";
-
-const navLinks = [
-  { label: "Product", href: "/#product" },
-  { label: "Pricing", href: "/#pricing" },
-  { label: "Resources", href: "/#product" },
-] as const;
+import LanguageSwitcher from "./LanguageSwitcher";
+import { isLoginPath } from "../../i18n/config";
+import { homePath, loginPath, sectionHref } from "../../i18n/paths";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export default function TopNav() {
   const { pathname } = useLocation();
-  const onLogin = pathname === "/login";
+  const { locale, t } = useLocale();
+  const onLogin = isLoginPath(pathname);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navLinks = [
+    { label: t("nav.product"), href: sectionHref(locale, "product") },
+    { label: t("nav.pricing"), href: sectionHref(locale, "pricing") },
+    { label: t("nav.resources"), href: sectionHref(locale, "product") },
+  ];
 
   useEffect(() => {
     setMobileOpen(false);
@@ -48,7 +53,11 @@ export default function TopNav() {
       }`}
     >
       <nav className="relative mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        <Link to="/" className="relative z-10 flex shrink-0 items-center" aria-label="Lunyo home">
+        <Link
+          to={homePath(locale)}
+          className="relative z-10 flex shrink-0 items-center"
+          aria-label={t("nav.homeAria")}
+        >
           <Logo size="medium" />
         </Link>
 
@@ -65,17 +74,18 @@ export default function TopNav() {
         </div>
 
         <div className="relative z-10 flex items-center gap-3">
+          <LanguageSwitcher />
           <Link
-            to={onLogin ? "/" : "/login"}
+            to={onLogin ? homePath(locale) : loginPath(locale)}
             className="hidden text-sm font-medium text-[var(--lunyo-text-muted)] transition hover:text-[var(--lunyo-text)] md:inline-flex"
           >
-            {onLogin ? "Back to home" : "Sign in"}
+            {onLogin ? t("nav.backHome") : t("nav.signIn")}
           </Link>
 
           <button
             type="button"
             className="inline-flex h-9 w-9 items-center justify-center rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] text-[var(--lunyo-text-muted)] transition hover:text-[var(--lunyo-text)] md:hidden"
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-label={mobileOpen ? t("nav.closeMenu") : t("nav.openMenu")}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((open) => !open)}
           >
@@ -105,12 +115,15 @@ export default function TopNav() {
                 </a>
               ))}
               <Link
-                to={onLogin ? "/" : "/login"}
+                to={onLogin ? homePath(locale) : loginPath(locale)}
                 className="mt-1 rounded-[var(--lunyo-radius)] px-3 py-2.5 text-sm font-medium text-[var(--lunyo-text)] transition hover:bg-[var(--lunyo-surface)]"
                 onClick={() => setMobileOpen(false)}
               >
-                {onLogin ? "Back to home" : "Sign in"}
+                {onLogin ? t("nav.backHome") : t("nav.signIn")}
               </Link>
+              <div className="mt-3 px-3">
+                <LanguageSwitcher />
+              </div>
             </div>
           </motion.div>
         )}

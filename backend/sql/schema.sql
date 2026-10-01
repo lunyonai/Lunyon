@@ -39,7 +39,7 @@ create table if not exists public.prompts (
   created_at timestamptz not null default now()
 );
 
--- Templates
+-- Templates (legacy / deprecated — not used by the Lunyon app)
 create table if not exists public.templates (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users (id) on delete set null,
@@ -49,7 +49,7 @@ create table if not exists public.templates (
   created_at timestamptz not null default now()
 );
 
--- Course progress
+-- Course progress (legacy / deprecated — not used by the Lunyon app)
 create table if not exists public.course_progress (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -61,7 +61,7 @@ create table if not exists public.course_progress (
   unique (user_id, course_id)
 );
 
--- User settings
+-- User settings (theme, locale, notifications, preferred_ai_provider)
 create table if not exists public.settings (
   user_id uuid primary key references auth.users (id) on delete cascade,
   theme text default 'dark',

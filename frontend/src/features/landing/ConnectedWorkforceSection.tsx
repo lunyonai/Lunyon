@@ -1,5 +1,6 @@
 import { motion, useAnimationFrame, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -9,7 +10,6 @@ type DiagramNode = {
   id: string;
   x: number;
   y: number;
-  label: string;
   role: NodeRole;
 };
 
@@ -29,14 +29,14 @@ const desktopLayout: Layout = {
   viewBox: "0 0 900 520",
   pulseCount: 5,
   nodes: [
-    { id: "in", x: 450, y: 48, label: "Incoming work", role: "in" },
-    { id: "email", x: 130, y: 176, label: "Email", role: "worker" },
-    { id: "research", x: 310, y: 208, label: "Research", role: "worker" },
-    { id: "meetings", x: 590, y: 208, label: "Meetings", role: "worker" },
-    { id: "reports", x: 770, y: 176, label: "Reports", role: "worker" },
-    { id: "followups", x: 250, y: 344, label: "Follow-ups", role: "worker" },
-    { id: "analytics", x: 650, y: 344, label: "Analytics", role: "worker" },
-    { id: "out", x: 450, y: 468, label: "Work completed", role: "out" },
+    { id: "in", x: 450, y: 48, role: "in" },
+    { id: "email", x: 130, y: 176, role: "worker" },
+    { id: "research", x: 310, y: 208, role: "worker" },
+    { id: "meetings", x: 590, y: 208, role: "worker" },
+    { id: "reports", x: 770, y: 176, role: "worker" },
+    { id: "followups", x: 250, y: 344, role: "worker" },
+    { id: "analytics", x: 650, y: 344, role: "worker" },
+    { id: "out", x: 450, y: 468, role: "out" },
   ],
   edges: [
     { from: "in", to: "email" },
@@ -60,14 +60,14 @@ const mobileLayout: Layout = {
   viewBox: "0 0 360 620",
   pulseCount: 2,
   nodes: [
-    { id: "in", x: 180, y: 36, label: "Incoming work", role: "in" },
-    { id: "email", x: 88, y: 150, label: "Email", role: "worker" },
-    { id: "research", x: 272, y: 150, label: "Research", role: "worker" },
-    { id: "meetings", x: 88, y: 268, label: "Meetings", role: "worker" },
-    { id: "reports", x: 272, y: 268, label: "Reports", role: "worker" },
-    { id: "followups", x: 88, y: 386, label: "Follow-ups", role: "worker" },
-    { id: "analytics", x: 272, y: 386, label: "Analytics", role: "worker" },
-    { id: "out", x: 180, y: 520, label: "Work completed", role: "out" },
+    { id: "in", x: 180, y: 36, role: "in" },
+    { id: "email", x: 88, y: 150, role: "worker" },
+    { id: "research", x: 272, y: 150, role: "worker" },
+    { id: "meetings", x: 88, y: 268, role: "worker" },
+    { id: "reports", x: 272, y: 268, role: "worker" },
+    { id: "followups", x: 88, y: 386, role: "worker" },
+    { id: "analytics", x: 272, y: 386, role: "worker" },
+    { id: "out", x: 180, y: 520, role: "out" },
   ],
   edges: [
     { from: "in", to: "email" },
@@ -117,6 +117,7 @@ function createPulses(layout: Layout): Pulse[] {
 }
 
 function WorkforceDiagram({ compact }: { compact: boolean }) {
+  const { t } = useLocale();
   const layout = compact ? mobileLayout : desktopLayout;
   const layoutRef = useRef(layout);
   const reduceMotion = useReducedMotion();
@@ -254,7 +255,7 @@ function WorkforceDiagram({ compact }: { compact: boolean }) {
         viewBox={layout.viewBox}
         className="mx-auto h-auto w-full max-w-4xl"
         role="img"
-        aria-label="Specialized AI Employees coordinating incoming work into completed outcomes"
+        aria-label={t("workforce.aria")}
       >
         {layout.edges.map((edge) => {
           const from = nodeById(layout.nodes, edge.from);
@@ -301,7 +302,11 @@ function WorkforceDiagram({ compact }: { compact: boolean }) {
               }
               fontSize={compact ? 11 : 12}
             >
-              {node.label}
+              {node.id === "in"
+                ? t("workforce.incoming")
+                : node.id === "out"
+                  ? t("workforce.completed")
+                  : t(`workforce.${node.id}`)}
             </text>
           </g>
         ))}
@@ -327,6 +332,7 @@ function WorkforceDiagram({ compact }: { compact: boolean }) {
 export default function ConnectedWorkforceSection() {
   const reduceMotion = useReducedMotion();
   const [compact, setCompact] = useState(false);
+  const { t } = useLocale();
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 767px)");
@@ -346,9 +352,9 @@ export default function ConnectedWorkforceSection() {
           transition={{ duration: 0.5, ease }}
           className="max-w-3xl text-3xl font-semibold tracking-tight text-[var(--lunyo-text)] md:text-4xl"
         >
-          One task becomes a workflow.
+          {t("workforce.headline1")}
           <br />
-          Workflows become a workforce.
+          {t("workforce.headline2")}
         </motion.h2>
 
         <motion.p
@@ -358,8 +364,7 @@ export default function ConnectedWorkforceSection() {
           transition={{ duration: 0.5, delay: 0.08, ease }}
           className="mt-5 max-w-xl text-base leading-7 text-[var(--lunyo-text-muted)] sm:text-lg"
         >
-          Lunyo coordinates specialized AI Employees that can work across the
-          repetitive parts of your day.
+          {t("workforce.supporting")}
         </motion.p>
 
         <WorkforceDiagram compact={compact} />

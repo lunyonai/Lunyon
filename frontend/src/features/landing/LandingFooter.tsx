@@ -1,26 +1,30 @@
 import { Link } from "react-router-dom";
 import Logo from "../auth/components/Logo";
-
-const links = [
-  { label: "Product", href: "/#product" },
-  { label: "Pricing", href: "/#pricing" },
-  { label: "Resources", href: "/#product" },
-] as const;
+import { homePath, sectionHref } from "../../i18n/paths";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 export default function LandingFooter() {
+  const { locale, t } = useLocale();
+
+  const links = [
+    { label: t("nav.product"), href: sectionHref(locale, "product") },
+    { label: t("nav.pricing"), href: sectionHref(locale, "pricing") },
+    { label: t("nav.resources"), href: sectionHref(locale, "product") },
+  ];
+
   return (
     <footer className="relative border-t border-[var(--lunyo-border)] bg-transparent py-12">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 px-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Link to="/" aria-label="Lunyo home">
+          <Link to={homePath(locale)} aria-label={t("nav.homeAria")}>
             <Logo size="small" />
           </Link>
           <p className="mt-3 text-sm text-[var(--lunyo-text-muted)]">
-            Reclaim Your Time.
+            {t("cta.tagline")}
           </p>
         </div>
 
-        <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Footer">
+        <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label={t("nav.footerAria")}>
           {links.map((link) => (
             <a
               key={link.label}
@@ -34,7 +38,7 @@ export default function LandingFooter() {
       </div>
 
       <p className="mx-auto mt-10 max-w-6xl px-6 text-xs text-[var(--lunyo-text-muted)]">
-        © Lunyo
+        © {t("cta.brand")}
       </p>
     </footer>
   );

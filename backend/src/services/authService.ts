@@ -8,6 +8,7 @@ export const credentialsSchema = z.object({
   fullName: z.string().min(2).optional(),
 });
 
+/** Not the product authentication path. Kept unused; HTTP routes return 410. */
 export async function registerUser(input: z.infer<typeof credentialsSchema>) {
   const { email, password, fullName } = credentialsSchema.parse(input);
 
@@ -40,6 +41,7 @@ export async function registerUser(input: z.infer<typeof credentialsSchema>) {
   };
 }
 
+/** Not the product authentication path. Kept unused; HTTP routes return 410. */
 export async function loginUser(input: z.infer<typeof credentialsSchema>) {
   const { email, password } = credentialsSchema
     .pick({ email: true, password: true })

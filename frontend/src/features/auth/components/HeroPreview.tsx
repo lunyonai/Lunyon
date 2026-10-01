@@ -3,19 +3,7 @@ import ActivityItem from "./ActivityItem";
 import PreviewMetric from "./PreviewMetric";
 import TimeTrend from "./TimeTrend";
 import WorkflowPreview from "./WorkflowPreview";
-
-const supportingMetrics = [
-  { label: "Tasks completed", value: "14" },
-  { label: "Emails handled", value: "8" },
-  { label: "Summaries created", value: "3" },
-];
-
-const recentActivity = [
-  { title: "Weekly report prepared", time: "2m" },
-  { title: "Client follow-up drafted", time: "11m" },
-  { title: "Meeting notes summarized", time: "28m" },
-  { title: "Research brief completed", time: "1h" },
-];
+import { useLocale } from "../../../i18n/LocaleProvider";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 10 },
@@ -25,6 +13,20 @@ const fadeUp = {
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export default function HeroPreview() {
+  const { t } = useLocale();
+  const supportingMetrics = [
+    { label: t("preview.tasksCompleted"), value: "14" },
+    { label: t("preview.emailsHandled"), value: "8" },
+    { label: t("preview.summariesCreated"), value: "3" },
+  ];
+
+  const recentActivity = [
+    { title: t("preview.weeklyReport"), time: "2m" },
+    { title: t("preview.clientFollowUp"), time: "11m" },
+    { title: t("preview.meetingNotes"), time: "28m" },
+    { title: t("preview.researchBrief"), time: "1h" },
+  ];
+
   return (
     <div className="flex h-full w-full items-center overflow-hidden px-8 py-8 xl:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
@@ -37,9 +39,11 @@ export default function HeroPreview() {
         >
           <div>
             <p className="text-sm font-medium text-[var(--lunyo-text)]">
-              Lunyo Workspace
+              {t("preview.workspace")}
             </p>
-            <p className="mt-0.5 text-xs text-[var(--lunyo-text-muted)]">Today</p>
+            <p className="mt-0.5 text-xs text-[var(--lunyo-text-muted)]">
+              {t("preview.today")}
+            </p>
           </div>
 
           <div
@@ -51,7 +55,7 @@ export default function HeroPreview() {
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--lunyo-primary)]" />
             </span>
             <span className="text-[11px] font-medium text-[var(--lunyo-text-muted)]">
-              Lunyo is working
+              {t("preview.working")}
             </span>
           </div>
         </motion.header>
@@ -65,7 +69,7 @@ export default function HeroPreview() {
           style={{ backgroundColor: "var(--lunyo-surface)" }}
         >
           <p className="text-[11px] font-medium tracking-[0.08em] text-[var(--lunyo-text-muted)]">
-            TIME RECLAIMED TODAY
+            {t("preview.timeReclaimed")}
           </p>
 
           <motion.p
@@ -78,7 +82,7 @@ export default function HeroPreview() {
           </motion.p>
 
           <p className="mt-2 text-xs text-[var(--lunyo-success)]/80">
-            +24 min vs yesterday
+            {t("preview.vsYesterday")}
           </p>
 
           <TimeTrend />
@@ -118,7 +122,7 @@ export default function HeroPreview() {
             style={{ backgroundColor: "var(--lunyo-surface)" }}
           >
             <p className="text-[11px] font-medium tracking-[0.06em] text-[var(--lunyo-text-muted)]">
-              RECENT ACTIVITY
+              {t("preview.recentActivity")}
             </p>
             <motion.ul
               initial="hidden"

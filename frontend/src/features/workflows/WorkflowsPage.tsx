@@ -1,112 +1,88 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
   CheckCircle2,
   Clock3,
-  Ellipsis,
-  Mail,
-  MessageSquareText,
   Play,
   Plus,
   Sparkles,
   Workflow,
 } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import AppShell from "../../layouts/AppShell";
-import { useActivity } from "../activity/ActivityContext";
+import { useEmployees } from "../employees/EmployeesContext";
+import { resolveEmployeeCopy } from "../employees/employeeView";
+import { useLocale } from "../../i18n/LocaleProvider";
+import { useWorkflows } from "./WorkflowsContext";
+import WorkflowActionsMenu from "./WorkflowActionsMenu";
+import WorkflowFormPanel from "./WorkflowFormPanel";
+import type { Workflow as WorkflowRecord } from "./workflowTypes";
 
-const workflows = [
-  {
-    title: "Client follow-up assistant",
-    description:
-      "Draft a follow-up email after each completed client meeting.",
-    trigger: "Meeting completed",
-    lastRun: "8 minutes ago",
-    runs: "124 runs",
-    icon: Mail,
-    iconColor: "text-blue-400",
-    iconBackground: "bg-blue-500/10",
-    status: "Active",
-    statusClass: "bg-emerald-500/10 text-emerald-400",
-  },
-  {
-    title: "Meeting notes to actions",
-    description:
-      "Extract decisions, owners, and next steps from meeting notes.",
-    trigger: "Notes added",
-    lastRun: "24 minutes ago",
-    runs: "89 runs",
-    icon: MessageSquareText,
-    iconColor: "text-violet-400",
-    iconBackground: "bg-violet-500/10",
-    status: "Active",
-    statusClass: "bg-emerald-500/10 text-emerald-400",
-  },
-  {
-    title: "Weekly team update",
-    description:
-      "Compile completed work and send a weekly summary to your team.",
-    trigger: "Every Friday at 4 PM",
-    lastRun: "3 days ago",
-    runs: "12 runs",
-    icon: Clock3,
-    iconColor: "text-amber-400",
-    iconBackground: "bg-amber-500/10",
-    status: "Scheduled",
-    statusClass: "bg-amber-500/10 text-amber-400",
-  },
-];
+function workflowCopy(
+  workflow: WorkflowRecord,
+  t: (path: string, vars?: Record<string, string | number>) => string,
+) {
+  return {
+    title: workflow.title?.trim() || t("app.workflows.untitled"),
+    description: workflow.description ?? "",
+    triggerLabel: t(`app.workflows.triggerOption.${workflow.trigger}`),
+  };
+}
 
 export default function WorkflowsPage() {
-  const [runningWorkflow, setRunningWorkflow] = useState<string | null>(null);
-  const [completedWorkflow, setCompletedWorkflow] = useState<string | null>(null);
-  const { addActivity } = useActivity();
+  const { t } = useLocale();
+  const location = useLocation();
+  const { workflows, loading, error } = useWorkflows();
+  const { employees } = useEmployees();
+  const [creating, setCreating] = useState(
+    Boolean((location.state as { create?: boolean } | null)?.create),
+  );
+  const [editing, setEditing] = useState<WorkflowRecord | null>(null);
 
-  function handleRunWorkflow(workflowName: string) {
-    if (runningWorkflow) return;
+  const views = useMemo(
+    () =>
+      workflows.map((workflow) => {
+        const employee = workflow.employeeId
+          ? employees.find((item) => item.id === workflow.employeeId)
+          : null;
+        return {
+          workflow,
+          ...workflowCopy(workflow, t),
+          employeeName: employee
+            ? resolveEmployeeCopy(employee, t).name
+            : workflow.employeeId
+              ? t("app.workflows.employeeMissing")
+              : null,
+        };
+      }),
+    [employees, t, workflows],
+  );
 
-    setRunningWorkflow(workflowName);
-    setCompletedWorkflow(null);
-
-    window.setTimeout(() => {
-      setRunningWorkflow(null);
-      setCompletedWorkflow(workflowName);
-
-      addActivity({
-        title: `${workflowName} completed`,
-        detail: "Triggered from Workflows page",
-        type: "workflow",
-      });
-
-      window.setTimeout(() => {
-        setCompletedWorkflow((current) =>
-          current === workflowName ? null : current,
-        );
-      }, 1800);
-    }, 1400);
-  }
+  const activeCount = workflows.filter((item) => item.status === "active").length;
 
   return (
     <AppShell>
       <section>
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-medium text-blue-400">AUTOMATION LAB</p>
+            <p className="text-sm font-medium text-blue-400">{t("app.workflows.kicker")}</p>
 
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-              Workflows
+              {t("app.workflows.title")}
             </h1>
 
             <p className="mt-2 text-sm text-slate-400">
-              Let your AI team handle repetitive work automatically.
+              {t("app.workflows.subtitle")}
             </p>
           </div>
 
           <button
             type="button"
-            className="flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500"
+            onClick={() => setCreating(true)}
+            className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500"
           >
             <Plus className="h-4 w-4" />
-            Create workflow
+            {t("app.workflows.create")}
           </button>
         </div>
 
@@ -117,10 +93,10 @@ export default function WorkflowsPage() {
             </div>
 
             <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              08
+              {String(activeCount).padStart(2, "0")}
             </p>
 
-            <p className="mt-1 text-sm text-slate-400">Active workflows</p>
+            <p className="mt-1 text-sm text-slate-400">{t("app.workflows.activeCount")}</p>
           </article>
 
           <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -128,12 +104,10 @@ export default function WorkflowsPage() {
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             </div>
 
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              225
-            </p>
+            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">0</p>
 
             <p className="mt-1 text-sm text-slate-400">
-              Tasks completed this week
+              {t("app.workflows.tasksThisWeek")}
             </p>
           </article>
 
@@ -142,11 +116,9 @@ export default function WorkflowsPage() {
               <Clock3 className="h-5 w-5 text-violet-400" />
             </div>
 
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              32.4h
-            </p>
+            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">—</p>
 
-            <p className="mt-1 text-sm text-slate-400">Time saved this week</p>
+            <p className="mt-1 text-sm text-slate-400">{t("app.workflows.timeSaved")}</p>
           </article>
         </div>
 
@@ -154,97 +126,89 @@ export default function WorkflowsPage() {
           <div className="flex flex-col gap-4 border-b border-slate-800 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-white">
-                Your automations
+                {t("app.workflows.listTitle")}
               </h2>
               <p className="mt-1 text-sm text-slate-400">
-                Workflows that are currently helping your team.
+                {t("app.workflows.listSubtitle")}
               </p>
             </div>
-
-            <button
-              type="button"
-              className="flex items-center gap-2 text-sm font-medium text-blue-400 transition hover:text-blue-300"
-            >
-              View activity
-              <ArrowUpRight className="h-4 w-4" />
-            </button>
           </div>
 
           <div className="divide-y divide-slate-800">
-            {workflows.map((workflow) => {
-              const Icon = workflow.icon;
-              const isRunning = runningWorkflow === workflow.title;
-              const isCompleted = completedWorkflow === workflow.title;
+            {loading && (
+              <p className="p-5 text-sm text-slate-500">{t("app.common.loading")}</p>
+            )}
+            {!loading && error && (
+              <p className="p-5 text-sm text-red-400">{t("app.workflows.loadError")}</p>
+            )}
+            {!loading && !error && workflows.length === 0 && (
+              <p className="p-5 text-sm text-slate-500">{t("app.workflows.empty")}</p>
+            )}
+            {views.map((item) => {
+              const paused = item.workflow.status === "inactive";
 
               return (
                 <article
-                  key={workflow.title}
+                  key={item.workflow.id}
                   className="flex flex-col gap-4 p-5 transition hover:bg-slate-800/40 sm:flex-row sm:items-center"
                 >
-                  <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${workflow.iconBackground}`}
-                  >
-                    <Icon className={`h-5 w-5 ${workflow.iconColor}`} />
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
+                    <Sparkles className="h-5 w-5 text-blue-400" />
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-sm font-semibold text-slate-200">
-                        {workflow.title}
+                        {item.title}
                       </h3>
 
                       <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${workflow.statusClass}`}
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          paused
+                            ? "bg-amber-500/10 text-amber-400"
+                            : "bg-emerald-500/10 text-emerald-400"
+                        }`}
                       >
-                        {workflow.status}
+                        {t(
+                          paused
+                            ? "app.workflows.statusInactive"
+                            : "app.workflows.statusActive",
+                        )}
                       </span>
                     </div>
 
                     <p className="mt-1 text-sm text-slate-400">
-                      {workflow.description}
+                      {item.description}
                     </p>
 
                     <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span>Trigger: {workflow.trigger}</span>
-                      <span>Last run: {workflow.lastRun}</span>
-                      <span>{workflow.runs}</span>
+                      <span>{t("app.workflows.trigger", { value: item.triggerLabel })}</span>
+                      {item.employeeName && (
+                        <span>
+                          {t("app.workflows.employeeValue", { name: item.employeeName })}
+                        </span>
+                      )}
+                      <span>{t("app.workflows.lastRun", { value: t("app.workflows.neverRun") })}</span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <button
                       type="button"
-                      aria-label={`Run ${workflow.title}`}
-                      onClick={() => handleRunWorkflow(workflow.title)}
-                      disabled={runningWorkflow !== null}
-                      className="flex h-9 min-w-24 items-center justify-center gap-2 rounded-lg border border-slate-800 px-3 text-xs font-medium text-slate-300 transition hover:border-blue-500/50 hover:bg-blue-500/10 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label={t("app.workflows.runAria", { title: item.title })}
+                      disabled
+                      title={t("app.workflows.executionComing")}
+                      className="flex h-9 min-w-24 items-center justify-center gap-2 rounded-lg border border-slate-800 px-3 text-xs font-medium text-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <span className="flex items-center gap-2" translate="no">
-                        {isRunning ? (
-                          <span className="h-3.5 w-3.5 rounded-full border-2 border-blue-400/30 border-t-blue-400 animate-spin" />
-                        ) : isCompleted ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                        ) : (
-                          <Play className="h-3.5 w-3.5" />
-                        )}
-
-                        <span>
-                          {isRunning
-                            ? "Running"
-                            : isCompleted
-                              ? "Completed"
-                              : "Run now"}
-                        </span>
-                      </span>
+                      <Play className="h-3.5 w-3.5" />
+                      <span>{t("app.workflows.executionComing")}</span>
                     </button>
 
-                    <button
-                      type="button"
-                      aria-label={`More options for ${workflow.title}`}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200"
-                    >
-                      <Ellipsis className="h-4 w-4" />
-                    </button>
+                    <WorkflowActionsMenu
+                      workflow={item.workflow}
+                      title={item.title}
+                      onEdit={() => setEditing(item.workflow)}
+                    />
                   </div>
                 </article>
               );
@@ -261,25 +225,30 @@ export default function WorkflowsPage() {
 
               <div>
                 <p className="text-sm font-semibold text-white">
-                  Find your next automation
+                  {t("app.workflows.nextTitle")}
                 </p>
                 <p className="mt-1 max-w-xl text-sm leading-6 text-slate-400">
-                  Tell us what repetitive task is taking time from your team,
-                  and we will help you turn it into a workflow.
+                  {t("app.workflows.nextBody")}
                 </p>
               </div>
             </div>
 
             <button
               type="button"
+              onClick={() => setCreating(true)}
               className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
             >
-              Get suggestions
+              {t("app.workflows.getSuggestions")}
               <ArrowUpRight className="h-4 w-4" />
             </button>
           </div>
         </section>
       </section>
+
+      {creating && <WorkflowFormPanel onClose={() => setCreating(false)} />}
+      {editing && (
+        <WorkflowFormPanel workflow={editing} onClose={() => setEditing(null)} />
+      )}
     </AppShell>
   );
 }

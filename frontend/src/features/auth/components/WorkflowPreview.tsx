@@ -1,13 +1,16 @@
 import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
+import { useLocale } from "../../../i18n/LocaleProvider";
 
-const steps = ["Inbox", "Summarize", "Draft reply", "Complete"] as const;
+const stepKeys = ["inbox", "summarize", "draftReply", "complete"] as const;
 const finalActiveIndex = 2;
-const finalProgressPercent = ((finalActiveIndex + 0.55) / steps.length) * 100;
+const finalProgressPercent = ((finalActiveIndex + 0.55) / stepKeys.length) * 100;
 
 export default function WorkflowPreview() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const { t } = useLocale();
+  const steps = stepKeys.map((key) => t(`demo.${key}`));
 
   useEffect(() => {
     const timers = [
@@ -32,13 +35,13 @@ export default function WorkflowPreview() {
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-medium text-[var(--lunyo-text)]/90">
-          Inbox triage
+          {t("demo.inboxTriage")}
         </p>
         <span
           className="rounded-md border border-[var(--lunyo-primary)]/20 px-2 py-0.5 text-[10px] font-medium text-[var(--lunyo-primary)]"
           style={{ backgroundColor: "var(--lunyo-primary-soft)" }}
         >
-          Running
+          {t("demo.running")}
         </span>
       </div>
 

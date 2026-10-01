@@ -5,51 +5,55 @@ import {
   Workflow,
 } from "lucide-react";
 import { useMemo } from "react";
-import { useActivity } from "../../activity/ActivityContext";
+import { useEmployees } from "../../employees/EmployeesContext";
+import { useWorkflows } from "../../workflows/WorkflowsContext";
+import { useLocale } from "../../../i18n/LocaleProvider";
 
 export default function StatsGrid() {
-  const { activities } = useActivity();
+  const { t } = useLocale();
+  const { employees } = useEmployees();
+  const { workflows } = useWorkflows();
 
   const stats = useMemo(() => {
-    const prompts = activities.filter(a => a.type === "prompt").length;
-    const workflows = activities.filter(a => a.type === "workflow").length;
-    const employees = activities.filter(a => a.type === "employee").length;
-
     return [
       {
-        title: "AI Employees",
-        value: employees,
-        subtitle: "Running autonomously",
+        key: "employees",
+        title: t("app.dashboard.statEmployees"),
+        value: employees.length,
+        subtitle: t("app.dashboard.statEmployeesSub"),
         icon: Bot,
         color: "text-blue-400",
         bg: "bg-blue-500/10",
       },
       {
-        title: "Prompt Executions",
-        value: prompts,
-        subtitle: "Completed successfully",
+        key: "prompts",
+        title: t("app.dashboard.statPrompts"),
+        value: "—",
+        subtitle: t("app.dashboard.statPromptsSub"),
         icon: Sparkles,
         color: "text-violet-400",
         bg: "bg-violet-500/10",
       },
       {
-        title: "Workflow Runs",
-        value: workflows,
-        subtitle: "Automation pipeline",
+        key: "workflows",
+        title: t("app.dashboard.statWorkflows"),
+        value: workflows.filter((item) => item.status === "active").length,
+        subtitle: t("app.dashboard.statWorkflowsSub"),
         icon: Workflow,
         color: "text-emerald-400",
         bg: "bg-emerald-500/10",
       },
       {
-        title: "Average Runtime",
-        value: "1.8s",
-        subtitle: "Execution speed",
+        key: "runtime",
+        title: t("app.dashboard.statRuntime"),
+        value: "—",
+        subtitle: t("app.dashboard.statRuntimeSub"),
         icon: Clock3,
         color: "text-orange-400",
         bg: "bg-orange-500/10",
       },
     ];
-  }, [activities]);
+  }, [employees.length, t, workflows]);
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -58,7 +62,7 @@ export default function StatsGrid() {
 
         return (
           <article
-            key={card.title}
+            key={card.key}
             className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 transition hover:border-blue-500/30"
           >
             <div className="flex justify-between">

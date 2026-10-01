@@ -15,6 +15,15 @@ const envSchema = z.object({
 
   STRIPE_SECRET_KEY: z.string().optional().default(""),
   STRIPE_WEBHOOK_SECRET: z.string().optional().default(""),
+  STRIPE_PRICE_ID: z.string().optional().default(""),
+
+  GOOGLE_CLIENT_ID: z.string().optional().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
+  GOOGLE_REDIRECT_URI: z
+    .string()
+    .optional()
+    .default("http://localhost:3001/api/integrations/google/callback"),
+  INTEGRATION_ENCRYPTION_KEY: z.string().optional().default(""),
 
   PAYPAL_CLIENT_ID: z.string().optional().default(""),
   PAYPAL_CLIENT_SECRET: z.string().optional().default(""),

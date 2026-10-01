@@ -1,10 +1,12 @@
 import { animate, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "../../i18n/LocaleProvider";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export default function TimeCalculatorSection() {
   const reduceMotion = useReducedMotion();
+  const { t } = useLocale();
   const [hours, setHours] = useState(5);
   const [displayHours, setDisplayHours] = useState(260);
   const displayRef = useRef(260);
@@ -40,7 +42,7 @@ export default function TimeCalculatorSection() {
           transition={{ duration: 0.5, ease }}
           className="text-3xl font-semibold tracking-tight text-[var(--lunyo-text)] md:text-4xl"
         >
-          Your time has value.
+          {t("calculator.headline")}
         </motion.h2>
 
         <motion.p
@@ -50,19 +52,23 @@ export default function TimeCalculatorSection() {
           transition={{ duration: 0.5, delay: 0.08, ease }}
           className="mt-5 max-w-xl text-base leading-7 text-[var(--lunyo-text-muted)] sm:text-lg"
         >
-          How much time do repetitive tasks take every week?
+          {t("calculator.question")}
         </motion.p>
 
         <div className="mt-14 max-w-xl">
           <div className="flex items-end justify-between gap-4">
             <p className="text-sm text-[var(--lunyo-text-muted)]">
-              {hours} {hours === 1 ? "hour" : "hours"} / week
+              {t(hours === 1 ? "calculator.hourWeek" : "calculator.hoursWeek", {
+                count: hours,
+              })}
             </p>
-            <p className="text-xs text-[var(--lunyo-text-muted)]">1–20 hours</p>
+            <p className="text-xs text-[var(--lunyo-text-muted)]">
+              {t("calculator.range")}
+            </p>
           </div>
 
           <label className="mt-5 block">
-            <span className="sr-only">Hours spent on repetitive tasks each week</span>
+            <span className="sr-only">{t("calculator.sliderAria")}</span>
             <input
               type="range"
               min={1}
@@ -75,24 +81,23 @@ export default function TimeCalculatorSection() {
           </label>
 
           <p className="mt-10 text-sm tracking-[0.12em] text-[var(--lunyo-text-muted)] uppercase">
-            Across a year, that is
+            {t("calculator.acrossYear")}
           </p>
           <p className="mt-3 text-5xl font-semibold tracking-tight text-[var(--lunyo-text)] tabular-nums sm:text-6xl">
             {displayHours}{" "}
             <span className="text-2xl font-medium text-[var(--lunyo-text-muted)] sm:text-3xl">
-              hours
+              {t("calculator.hours")}
             </span>
           </p>
 
           <p className="mt-8 max-w-md text-lg text-[var(--lunyo-text)]">
-            What would you do with {displayHours} hours back?
+            {t("calculator.whatWouldYouDo", { hours: displayHours })}
           </p>
           <p className="mt-3 text-sm leading-6 text-[var(--lunyo-text-muted)]">
-            This is the scale of repetitive work in a year — not a promise of
-            how much Lunyo will recover.
+            {t("calculator.disclaimer")}
           </p>
           <p className="mt-10 text-xl font-semibold tracking-tight text-[var(--lunyo-text)]">
-            Reclaim Your Time.
+            {t("calculator.close")}
           </p>
         </div>
       </div>

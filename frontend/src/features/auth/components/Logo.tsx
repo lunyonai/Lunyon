@@ -17,7 +17,7 @@ export default function Logo({ size = "medium", className = "" }: LogoProps) {
   return (
     <img
       src={LOGO_SRC}
-      alt="Lunyo"
+      alt="Lunyon"
       className={`h-auto object-contain object-left ${sizeClasses[size]} ${className}`.trim()}
     />
   );

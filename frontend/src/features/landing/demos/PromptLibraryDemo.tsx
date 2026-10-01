@@ -1,37 +1,46 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
-
-const categories = ["All", "Email", "Reports", "Research", "Meetings"];
-
-const prompts = [
-  {
-    id: "email",
-    title: "Email follow-up",
-    category: "Email",
-    preview: "Draft a concise follow-up after a client meeting.",
-  },
-  {
-    id: "weekly",
-    title: "Weekly report",
-    category: "Reports",
-    preview: "Summarize progress, blockers, and next steps.",
-  },
-  {
-    id: "research",
-    title: "Research summary",
-    category: "Research",
-    preview: "Turn notes into a clear brief with key findings.",
-  },
-  {
-    id: "meeting",
-    title: "Meeting preparation",
-    category: "Meetings",
-    preview: "Prepare agenda, context, and talking points.",
-  },
-];
+import { useLocale } from "../../../i18n/LocaleProvider";
 
 export default function PromptLibraryDemo() {
+  const { t } = useLocale();
   const [selected, setSelected] = useState("email");
+
+  const categories = [
+    { id: "all", label: t("demo.all") },
+    { id: "email", label: t("demo.email") },
+    { id: "reports", label: t("demo.reports") },
+    { id: "research", label: t("demo.research") },
+    { id: "meetings", label: t("demo.meetings") },
+  ];
+
+  const prompts = [
+    {
+      id: "email",
+      title: t("demo.emailFollowUp"),
+      category: t("demo.email"),
+      preview: t("demo.emailFollowUpPreview"),
+    },
+    {
+      id: "weekly",
+      title: t("demo.weeklyReport"),
+      category: t("demo.reports"),
+      preview: t("demo.weeklyReportPreview"),
+    },
+    {
+      id: "research",
+      title: t("demo.researchSummary"),
+      category: t("demo.research"),
+      preview: t("demo.researchSummaryPreview"),
+    },
+    {
+      id: "meeting",
+      title: t("demo.meetingPrep"),
+      category: t("demo.meetings"),
+      preview: t("demo.meetingPrepPreview"),
+    },
+  ];
+
   const active = prompts.find((p) => p.id === selected) ?? prompts[0];
 
   return (
@@ -41,7 +50,7 @@ export default function PromptLibraryDemo() {
         <input
           readOnly
           value=""
-          placeholder="Search prompts…"
+          placeholder={t("demo.searchPrompts")}
           className="h-10 w-full rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-bg)]/80 pl-10 text-sm text-[var(--lunyo-text-muted)] outline-none"
         />
       </div>
@@ -49,14 +58,14 @@ export default function PromptLibraryDemo() {
       <div className="flex flex-wrap gap-2">
         {categories.map((cat) => (
           <span
-            key={cat}
+            key={cat.id}
             className={`rounded-md px-2.5 py-1 text-[11px] font-medium ${
-              cat === "All"
+              cat.id === "all"
                 ? "bg-[var(--lunyo-primary-soft)] text-[var(--lunyo-primary)]"
                 : "border border-[var(--lunyo-border)] text-[var(--lunyo-text-muted)]"
             }`}
           >
-            {cat}
+            {cat.label}
           </span>
         ))}
       </div>
@@ -89,7 +98,7 @@ export default function PromptLibraryDemo() {
 
       <div className="rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-bg)]/80 p-3">
         <p className="text-[11px] font-medium text-[var(--lunyo-text-muted)]">
-          Selected prompt
+          {t("demo.selectedPrompt")}
         </p>
         <p className="mt-1 text-sm text-[var(--lunyo-text)]">{active.title}</p>
         <p className="mt-2 text-xs leading-5 text-[var(--lunyo-text-muted)]">

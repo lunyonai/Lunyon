@@ -1,33 +1,49 @@
 import { Sparkles, Bot, Workflow, CheckCircle2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useLocale } from "../../../i18n/LocaleProvider";
+import { useAuth } from "../../../hooks/useAuth";
+import { useEmployees } from "../../employees/EmployeesContext";
+import { useWorkflows } from "../../workflows/WorkflowsContext";
+import { userDisplayName } from "../../../lib/userDisplay";
 
 export default function DashboardHeader() {
+  const { t } = useLocale();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const name = userDisplayName(user) || "there";
+  const { employees } = useEmployees();
+  const { workflows } = useWorkflows();
+  const activeEmployees = employees.filter((item) => item.status === "active").length;
+  const activeWorkflows = workflows.filter((item) => item.status === "active").length;
+
   return (
     <header className="flex flex-col gap-6 rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-8">
 
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
 
         <div>
 
           <span className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-400">
-            AI OPERATING SYSTEM
+            {t("app.dashboard.kicker")}
           </span>
 
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white">
-            Good afternoon, Lucas 👋
+            {t("app.dashboard.greeting", { name })}
           </h1>
 
           <p className="mt-3 max-w-xl text-slate-400">
-            Your AI workforce is online and continuously automating repetitive
-            work across your business.
+            {t("app.dashboard.intro")}
           </p>
 
         </div>
 
         <button
-          className="flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 font-medium text-white transition hover:bg-blue-500"
+          type="button"
+          onClick={() => navigate("/workflows", { state: { create: true } })}
+          className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-5 font-medium text-white transition hover:bg-blue-500"
         >
           <Sparkles className="h-4 w-4"/>
-          Create Automation
+          {t("app.dashboard.createAutomation")}
         </button>
 
       </div>
@@ -43,11 +59,11 @@ export default function DashboardHeader() {
             <div>
 
               <p className="text-3xl font-semibold text-white">
-                12
+                {activeEmployees}
               </p>
 
               <p className="text-sm text-slate-400">
-                AI Employees Online
+                {t("app.dashboard.employeesOnline")}
               </p>
 
             </div>
@@ -65,11 +81,11 @@ export default function DashboardHeader() {
             <div>
 
               <p className="text-3xl font-semibold text-white">
-                3
+                {activeWorkflows}
               </p>
 
               <p className="text-sm text-slate-400">
-                Workflows Running
+                {t("app.dashboard.workflowsRunning")}
               </p>
 
             </div>
@@ -87,11 +103,11 @@ export default function DashboardHeader() {
             <div>
 
               <p className="text-3xl font-semibold text-white">
-                521
+                0
               </p>
 
               <p className="text-sm text-slate-400">
-                Tasks Completed Today
+                {t("app.dashboard.tasksToday")}
               </p>
 
             </div>
