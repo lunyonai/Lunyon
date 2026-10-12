@@ -8,6 +8,7 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 
 import { api, type MeResponse } from "../lib/api";
+import { markOAuthPending, oauthRedirectTo } from "../lib/oauthRedirect";
 import { authService } from "../services/authService";
 
 type AuthContextType = {
@@ -18,6 +19,7 @@ type AuthContextType = {
   recovering: boolean;
 
   login(email: string, password: string): Promise<void>;
+  loginWithGoogle(): Promise<void>;
   register(email: string, password: string, fullName?: string): Promise<void>;
   logout(): Promise<void>;
   updateProfile(fullName: string): Promise<void>;
@@ -47,26 +49,49 @@ export function AuthProvider({
   const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
-    authService.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
+    let settled = false;
+    const settle = (nextSession: Session | null) => {
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+      if (!settled) {
+        settled = true;
+        setLoading(false);
+      }
+    };
+
+    const fallback = window.setTimeout(() => {
+      void authService.getSession().then(({ data }) => {
+        settle(data.session);
+      });
+    }, 2500);
 
     const {
       data: { subscription },
-    } = authService.onAuthStateChange(async (event, nextSession) => {
+    } = authService.onAuthStateChange((event, nextSession) => {
       if (event === "PASSWORD_RECOVERY") {
         setRecovering(true);
       }
       if (event === "SIGNED_OUT") {
         setRecovering(false);
       }
+      if (
+        event === "INITIAL_SESSION" ||
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "TOKEN_REFRESHED"
+      ) {
+        window.clearTimeout(fallback);
+        settle(nextSession);
+        return;
+      }
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      window.clearTimeout(fallback);
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -106,6 +131,12 @@ export function AuthProvider({
 
     setSession(data.session);
     setUser(data.session.user);
+  }
+
+  async function loginWithGoogle() {
+    markOAuthPending();
+    const { error } = await authService.signInWithGoogle(oauthRedirectTo());
+    if (error) throw error;
   }
 
   async function register(
@@ -178,6 +209,7 @@ export function AuthProvider({
         loading,
         recovering,
         login,
+        loginWithGoogle,
         register,
         logout,
         updateProfile,

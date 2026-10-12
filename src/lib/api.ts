@@ -1,6 +1,13 @@
 import { supabase } from "./supabase";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
+function resolveApiUrl() {
+  const configured = import.meta.env.VITE_API_URL?.trim();
+  if (configured) return configured.replace(/\/$/, "");
+  if (import.meta.env.DEV) return "http://localhost:3001";
+  return "";
+}
+
+const API_URL = resolveApiUrl();
 
 export class ApiError extends Error {
   status: number;
@@ -63,6 +70,20 @@ export type GoogleStatus = {
   status: "disconnected" | "connected" | "error";
   email: string | null;
   capabilities: string[];
+  needsReauth: boolean;
+  canWrite: boolean;
+};
+
+export type GoogleCalendarListItem = {
+  id: string;
+  summary: string;
+  primary: boolean;
+  selected: boolean;
+  enabled: boolean;
+  backgroundColor: string | null;
+  timeZone: string | null;
+  accessRole: string | null;
+  writable: boolean;
 };
 
 export type GmailMessageSummary = {
@@ -77,13 +98,80 @@ export type GmailMessageSummary = {
 
 export type CalendarEventSummary = {
   id: string;
-  title: string | null;
-  start: string | null;
-  end: string | null;
-  location: string | null;
-  organizer: string | null;
-  attendees: string[];
+  title: string;
+  start: string;
+  end: string;
+  isAllDay: boolean;
+  timezone: string;
   description: string | null;
+  location: string | null;
+  meetingUrl: string | null;
+  calendarSource: string;
+  calendarId: string;
+  calendarName: string;
+  calendarColor: string | null;
+  googleEventId: string;
+  recurringEventId: string | null;
+  htmlLink: string | null;
+  etag: string | null;
+  attendees: string[];
+  canModify: boolean;
+};
+
+export type CalendarWriteAction = "create" | "update" | "delete";
+
+export type CalendarWriteDraft = {
+  action: CalendarWriteAction;
+  calendarId: string;
+  googleEventId?: string;
+  recurrence?: "this" | "series";
+  sendUpdates?: "all" | "externalOnly" | "none";
+  idempotencyKey: string;
+  etag?: string;
+  event?: {
+    title: string;
+    description?: string | null;
+    start: string;
+    end: string;
+    timezone: string;
+    isAllDay: boolean;
+    location?: string | null;
+    attendees?: string[];
+    addMeet?: boolean;
+  };
+};
+
+export type CalendarWritePreview = {
+  confirmationToken: string;
+  expiresInSeconds: number;
+  action: CalendarWriteAction;
+  summary: {
+    calendarName?: string;
+    title?: string;
+    start?: string;
+    end?: string;
+    attendees?: string[];
+    recurring?: boolean;
+    sendUpdates?: string;
+    conflicts?: Array<{
+      id: string;
+      title: string;
+      start: string;
+      end: string;
+      calendarName: string;
+    }>;
+    htmlLink?: string | null;
+    guestsNotified?: boolean;
+    addMeet?: boolean;
+  };
+};
+
+export type CalendarWriteResult = {
+  ok: boolean;
+  action?: CalendarWriteAction;
+  htmlLink?: string | null;
+  googleEventId?: string | null;
+  replayed?: boolean;
 };
 
 export type WorkflowStepPayload = {
@@ -140,6 +228,10 @@ export async function apiRequest<T>(
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  if (!API_URL) {
+    throw new ApiError("Lunyon API is not configured", 503, "API_UNCONFIGURED");
   }
 
   const url = `${API_URL}${path}`;
@@ -230,14 +322,26 @@ export const api = {
     return apiRequest<GoogleStatus>("/api/integrations/google/status");
   },
 
-  googleConnect() {
-    return apiRequest<{ url: string }>("/api/integrations/google/connect");
+  googleConnect(write = false) {
+    return apiRequest<{ url: string }>(
+      `/api/integrations/google/connect${write ? "?write=1" : ""}`,
+    );
   },
 
   googleDisconnect() {
-    return apiRequest<GoogleStatus>("/api/integrations/google/disconnect", {
-      method: "POST",
-      body: {},
+    return apiRequest<GoogleStatus>("/api/integrations/google", {
+      method: "DELETE",
+    });
+  },
+
+  googleCalendars() {
+    return apiRequest<GoogleCalendarListItem[]>("/api/integrations/google/calendars");
+  },
+
+  saveGoogleCalendars(calendarIds: string[]) {
+    return apiRequest<GoogleCalendarListItem[]>("/api/integrations/google/calendars", {
+      method: "PUT",
+      body: { calendarIds },
     });
   },
 
@@ -250,6 +354,46 @@ export const api = {
   calendarEvents(range: "today" | "next7" = "next7") {
     return apiRequest<CalendarEventSummary[]>(
       `/api/integrations/google/calendar/events?range=${range}`,
+    );
+  },
+
+  calendarToday() {
+    return apiRequest<CalendarEventSummary[]>(
+      "/api/integrations/google/calendar/today",
+    );
+  },
+
+  calendarUpcoming(days = 7) {
+    return apiRequest<CalendarEventSummary[]>(
+      `/api/integrations/google/calendar/upcoming?days=${days}`,
+    );
+  },
+
+  previewCalendarEvent(body: CalendarWriteDraft) {
+    return apiRequest<CalendarWritePreview>(
+      "/api/integrations/google/calendar/events/preview",
+      { method: "POST", body },
+    );
+  },
+
+  commitCalendarCreate(confirmationToken: string) {
+    return apiRequest<CalendarWriteResult>("/api/integrations/google/calendar/events", {
+      method: "POST",
+      body: { confirmationToken },
+    });
+  },
+
+  commitCalendarUpdate(eventId: string, confirmationToken: string) {
+    return apiRequest<CalendarWriteResult>(
+      `/api/integrations/google/calendar/events/${encodeURIComponent(eventId)}`,
+      { method: "PATCH", body: { confirmationToken } },
+    );
+  },
+
+  commitCalendarDelete(eventId: string, confirmationToken: string) {
+    return apiRequest<CalendarWriteResult>(
+      `/api/integrations/google/calendar/events/${encodeURIComponent(eventId)}?confirmationToken=${encodeURIComponent(confirmationToken)}`,
+      { method: "DELETE" },
     );
   },
 

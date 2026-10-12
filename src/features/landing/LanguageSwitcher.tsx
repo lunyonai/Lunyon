@@ -5,11 +5,11 @@ import { useLocale } from "../../i18n/LocaleProvider";
 
 export default function LanguageSwitcher() {
   const { locale, t, setLocale } = useLocale();
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, search } = useLocation();
   const publicPath = isPublicPath(pathname);
 
   function targetFor(next: (typeof LOCALES)[number]) {
-    return localeSwitchPath(next, pathname, hash);
+    return localeSwitchPath(next, pathname, hash, search);
   }
 
   return (

@@ -1,5 +1,6 @@
 import {
   Bot,
+  CalendarDays,
   House,
   LibraryBig,
   PanelLeft,
@@ -24,6 +25,7 @@ const navigation = [
   { key: "employees", icon: Bot, to: "/employees" },
   { key: "prompts", icon: LibraryBig, to: "/prompts" },
   { key: "workflows", icon: Workflow, to: "/workflows" },
+  { key: "calendar", icon: CalendarDays, to: "/calendar" },
 ] as const;
 
 function headerCopy(
@@ -52,6 +54,12 @@ function headerCopy(
     return {
       title: t("app.nav.workflows"),
       subtitle: t("app.workflows.subtitle"),
+    };
+  }
+  if (pathname === "/calendar") {
+    return {
+      title: t("app.nav.calendar"),
+      subtitle: t("app.calendar.subtitle"),
     };
   }
   if (pathname === "/settings") {

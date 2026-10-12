@@ -8,6 +8,10 @@ export function loginPath(locale: Locale): string {
   return locale === DEFAULT_LOCALE ? "/login" : `/${locale}/login`;
 }
 
+export function signupPath(locale: Locale): string {
+  return `${loginPath(locale)}?signup=1`;
+}
+
 export function forgotPasswordPath(locale: Locale): string {
   return locale === DEFAULT_LOCALE
     ? "/forgot-password"
@@ -29,13 +33,17 @@ export function localeSwitchPath(
   next: Locale,
   pathname: string,
   hash: string,
+  search = "",
 ): string {
   if (
     pathname === "/login" ||
     pathname === "/pt/login" ||
     pathname === "/es/login"
   ) {
-    return loginPath(next);
+    const params = new URLSearchParams(
+      search.startsWith("?") ? search.slice(1) : search,
+    );
+    return params.get("signup") === "1" ? signupPath(next) : loginPath(next);
   }
   if (pathname.endsWith("/forgot-password")) {
     return forgotPasswordPath(next);

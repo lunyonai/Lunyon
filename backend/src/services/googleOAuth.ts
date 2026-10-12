@@ -2,12 +2,36 @@ import { OAuth2Client } from "google-auth-library";
 import { env } from "../config/env.js";
 import { AppError } from "../middleware/errorHandler.js";
 
-export const GOOGLE_SCOPES = [
+/** Calendar connection only. Never used for Lunyon Google Sign-In. */
+export const GOOGLE_CALENDAR_READ_SCOPES = [
   "openid",
   "https://www.googleapis.com/auth/userinfo.email",
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/calendar.events.readonly",
+  "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
 ] as const;
+
+export const GOOGLE_CALENDAR_WRITE_SCOPE =
+  "https://www.googleapis.com/auth/calendar.events";
+
+export const GOOGLE_CALENDAR_SCOPES = GOOGLE_CALENDAR_READ_SCOPES;
+
+export function hasCalendarListScope(scopes: string[] | null | undefined) {
+  return (scopes ?? []).some(
+    (scope) =>
+      scope.endsWith("/calendar.calendarlist.readonly") ||
+      scope.endsWith("/auth/calendar.readonly"),
+  );
+}
+
+export function hasCalendarWriteScope(scopes: string[] | null | undefined) {
+  return (scopes ?? []).some((scope) => {
+    const normalized = scope.replace(/\/$/, "");
+    return (
+      normalized === "https://www.googleapis.com/auth/calendar.events" ||
+      normalized.endsWith("/auth/calendar.events")
+    );
+  });
+}
 
 export function assertGoogleConfigured() {
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_REDIRECT_URI) {
@@ -24,13 +48,13 @@ export function createGoogleClient() {
   );
 }
 
-export function googleAuthUrl(state: string) {
+export function googleAuthUrl(state: string, write = false) {
   const client = createGoogleClient();
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    include_granted_scopes: false,
-    scope: [...GOOGLE_SCOPES],
+    include_granted_scopes: write,
+    scope: write ? [GOOGLE_CALENDAR_WRITE_SCOPE] : [...GOOGLE_CALENDAR_READ_SCOPES],
     state,
   });
 }

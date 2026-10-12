@@ -1,11 +1,12 @@
 import { ArrowRight, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Logo from "./Logo";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocale } from "../../../i18n/LocaleProvider";
 import { forgotPasswordPath } from "../../../i18n/paths";
+import { clearOAuthPending } from "../../../lib/oauthRedirect";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -28,16 +29,36 @@ export default function LoginForm() {
   const navigate = useNavigate();
   const { locale, t } = useLocale();
 
-  const { login, register } = useAuth();
+  const { login, loginWithGoogle, register } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">(
+    () => (searchParams.get("signup") === "1" ? "signup" : "login"),
+  );
   const isSignup = mode === "signup";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [oauthFlag, setOauthFlag] = useState(() => searchParams.get("error"));
+  const busy = loading || googleLoading;
+  const oauthMessage =
+    oauthFlag === "google_cancelled"
+      ? t("login.errors.googleCancelled")
+      : oauthFlag === "google"
+        ? t("login.errors.googleFailed")
+        : "";
+  const visibleError = error || oauthMessage;
+
+  useEffect(() => {
+    if (!searchParams.get("error")) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete("error");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   function authMessage(err: unknown) {
     if (err instanceof Error) {
@@ -57,8 +78,31 @@ export default function LoginForm() {
       if (text.includes("failed to fetch") || text.includes("network request")) {
         return t("login.errors.network");
       }
+      if (
+        code === "provider_disabled" ||
+        text.includes("provider is not enabled") ||
+        text.includes("unsupported provider")
+      ) {
+        return t("login.errors.googleUnavailable");
+      }
+      if (text.includes("google") || code.startsWith("oauth")) {
+        return t("login.errors.googleFailed");
+      }
     }
     return t("login.fallbackError");
+  }
+
+  async function handleGoogle() {
+    setGoogleLoading(true);
+    setError("");
+    setOauthFlag(null);
+    try {
+      await loginWithGoogle();
+    } catch (err: unknown) {
+      clearOAuthPending();
+      setError(authMessage(err));
+      setGoogleLoading(false);
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -66,6 +110,7 @@ export default function LoginForm() {
 
     setLoading(true);
     setError("");
+    setOauthFlag(null);
 
     try {
       if (isSignup) {
@@ -187,23 +232,26 @@ export default function LoginForm() {
             </div>
           )}
 
-          {error && (
-            <div className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300">
-              {error}
-            </div>
-          )}
+          {visibleError && (
+              <div
+                role="alert"
+                className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300"
+              >
+                {visibleError}
+              </div>
+            )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={busy}
             className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] bg-[var(--lunyo-primary)] text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading
+            {busy
               ? t("login.loading")
               : isSignup
                 ? t("login.createAccount")
                 : t("login.signIn")}
-            {!loading && <ArrowRight className="h-4 w-4" />}
+            {!busy && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
 
@@ -215,12 +263,11 @@ export default function LoginForm() {
 
         <button
           type="button"
-          onClick={() => {
-            alert(t("login.googleSoon"));
-          }}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-surface)]/60 text-sm font-medium text-[var(--lunyo-text)] transition hover:bg-[var(--lunyo-surface)]"
+          onClick={() => void handleGoogle()}
+          disabled={busy}
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-surface)]/60 text-sm font-medium text-[var(--lunyo-text)] transition hover:bg-[var(--lunyo-surface)] disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {t("login.google")}
+          {googleLoading ? t("login.loading") : t("login.google")}
         </button>
 
         <p className="mt-7 text-center text-sm text-[var(--lunyo-text-muted)]">

@@ -12,7 +12,11 @@ import { Link } from "react-router-dom";
 import Logo from "./Logo";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocale } from "../../../i18n/LocaleProvider";
-import { loginPath, resetPasswordPath } from "../../../i18n/paths";
+import { loginPath, resetPasswordPath, signupPath } from "../../../i18n/paths";
+import {
+  isValidRecoveryEmail,
+  lookupRecoveryEmail,
+} from "../../../services/recoveryEmailLookup";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 const RESEND_SECONDS = 60;
@@ -51,16 +55,6 @@ function authCode(err: unknown) {
 function authText(err: unknown) {
   if (err instanceof Error) return err.message.toLowerCase();
   return "";
-}
-
-function isUnknownAccount(err: unknown) {
-  const code = authCode(err);
-  const text = authText(err);
-  return (
-    code === "user_not_found" ||
-    text.includes("user not found") ||
-    text.includes("unable to find user")
-  );
 }
 
 function recoveryMessage(err: unknown, t: (path: string) => string) {
@@ -126,6 +120,7 @@ export default function RecoveryForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notRegistered, setNotRegistered] = useState(false);
   const [notice, setNotice] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
@@ -148,19 +143,37 @@ export default function RecoveryForm() {
 
   async function requestReset() {
     const redirectTo = `${window.location.origin}${resetPasswordPath(locale)}`;
-    try {
-      await resetPassword(email, redirectTo);
-    } catch (err) {
-      if (isUnknownAccount(err)) return;
-      throw err;
-    }
+    await resetPassword(email, redirectTo);
   }
 
   async function submitEmail(event: FormEvent) {
     event.preventDefault();
+    setNotRegistered(false);
+    if (!isValidRecoveryEmail(email)) {
+      setError(t("recovery.errors.invalidEmail"));
+      return;
+    }
     setLoading(true);
     setError("");
     try {
+      const lookup = await lookupRecoveryEmail(email);
+      if (lookup === "invalid_email") {
+        setError(t("recovery.errors.invalidEmail"));
+        return;
+      }
+      if (lookup === "rate_limited") {
+        setError(t("recovery.errors.rateLimited"));
+        return;
+      }
+      if (lookup === "unavailable") {
+        setError(t("recovery.errors.backend"));
+        return;
+      }
+      if (lookup === "unregistered") {
+        setNotRegistered(true);
+        setError(t("recovery.errors.notRegistered"));
+        return;
+      }
       await requestReset();
       setNotice(t("recovery.genericSent"));
       setCooldown(RESEND_SECONDS);
@@ -339,17 +352,37 @@ export default function RecoveryForm() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    if (error) setError("");
+                    if (notRegistered) setNotRegistered(false);
+                  }}
                   placeholder="you@company.com"
                   autoComplete="email"
                   required
+                  aria-invalid={Boolean(error)}
+                  aria-describedby={error ? "recovery-email-error" : undefined}
                   className={inputClassName}
                 />
               </div>
             </label>
             {error && (
-              <div className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300">
-                {error}
+              <div
+                id="recovery-email-error"
+                className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300"
+              >
+                <p>{error}</p>
+                {notRegistered && (
+                  <p className="mt-1.5">
+                    {t("recovery.notRegisteredHint")}{" "}
+                    <Link
+                      to={signupPath(locale)}
+                      className="font-medium text-[var(--lunyo-primary)] transition hover:brightness-125"
+                    >
+                      {t("recovery.createAccount")}
+                    </Link>
+                  </p>
+                )}
               </div>
             )}
             <button

@@ -3,7 +3,9 @@ import { decryptSecret, encryptSecret } from "../lib/tokenCrypto.js";
 import { AppError } from "../middleware/errorHandler.js";
 import {
   exchangeGoogleCode,
-  GOOGLE_SCOPES,
+  GOOGLE_CALENDAR_SCOPES,
+  hasCalendarListScope,
+  hasCalendarWriteScope,
   refreshGoogleAccessToken,
   revokeGoogleToken,
 } from "./googleOAuth.js";
@@ -21,6 +23,7 @@ type ConnectionRow = {
   access_token_encrypted: string | null;
   refresh_token_encrypted: string | null;
   token_expires_at: string | null;
+  selected_calendar_ids: string[] | null;
 };
 
 export type GoogleStatus = {
@@ -28,6 +31,8 @@ export type GoogleStatus = {
   status: "disconnected" | "connected" | "error";
   email: string | null;
   capabilities: string[];
+  needsReauth: boolean;
+  canWrite: boolean;
 };
 
 function dbError(error: { message: string }): never {
@@ -45,16 +50,28 @@ function publicStatus(row: ConnectionRow | null): GoogleStatus {
       status: row?.status === "error" ? "error" : "disconnected",
       email: null,
       capabilities: [],
+      needsReauth: false,
+      canWrite: false,
     };
   }
 
   const scopes = row.scopes ?? [];
   const capabilities: string[] = [];
-  if (scopes.some((scope) => scope.includes("gmail.readonly"))) {
-    capabilities.push("gmail.read");
-  }
-  if (scopes.some((scope) => scope.includes("calendar.readonly"))) {
+  if (
+    hasCalendarWriteScope(scopes) ||
+    scopes.some(
+      (scope) =>
+        scope.includes("calendar.events.readonly") ||
+        scope.endsWith("/auth/calendar.readonly"),
+    )
+  ) {
     capabilities.push("calendar.read");
+  }
+  if (hasCalendarListScope(scopes)) {
+    capabilities.push("calendar.list");
+  }
+  if (hasCalendarWriteScope(scopes)) {
+    capabilities.push("calendar.write");
   }
 
   return {
@@ -62,6 +79,8 @@ function publicStatus(row: ConnectionRow | null): GoogleStatus {
     status: "connected",
     email: row.provider_email,
     capabilities,
+    needsReauth: !hasCalendarListScope(scopes),
+    canWrite: hasCalendarWriteScope(scopes),
   };
 }
 
@@ -79,6 +98,16 @@ async function loadConnection(userId: string) {
 
 export async function getGoogleStatus(userId: string): Promise<GoogleStatus> {
   return publicStatus(await loadConnection(userId));
+}
+
+export async function assertCalendarWriteAccess(userId: string) {
+  const row = await loadConnection(userId);
+  if (!row || row.status !== "connected") {
+    throw new AppError("Google is not connected", 409);
+  }
+  if (!hasCalendarWriteScope(row.scopes)) {
+    throw new AppError("Google Calendar write permission is required", 403, "CALENDAR_WRITE_SCOPE");
+  }
 }
 
 async function fetchGoogleProfile(accessToken: string) {
@@ -113,13 +142,27 @@ export async function completeGoogleOAuth(userId: string, code: string) {
     ? new Date(tokens.expiry_date).toISOString()
     : new Date(Date.now() + 45 * 60 * 1000).toISOString();
 
+  const granted = tokens.scope?.split(/\s+/).filter(Boolean) ?? [];
+  let scopes: string[];
+  if (granted.length === 0) {
+    scopes = existing?.scopes?.length ? existing.scopes : [...GOOGLE_CALENDAR_SCOPES];
+  } else if (
+    hasCalendarWriteScope(granted) &&
+    !hasCalendarListScope(granted) &&
+    existing?.scopes?.length
+  ) {
+    scopes = [...new Set([...existing.scopes, ...granted])];
+  } else {
+    scopes = [...new Set(granted)];
+  }
+
   const payload = {
     user_id: userId,
     provider: PROVIDER,
     provider_account_id: profile.id,
     provider_email: profile.email,
     status: "connected",
-    scopes: [...GOOGLE_SCOPES],
+    scopes,
     access_token_encrypted: encryptSecret(tokens.access_token as string),
     refresh_token_encrypted: encryptSecret(refreshToken),
     token_expires_at: expiresAt,
@@ -135,6 +178,35 @@ export async function completeGoogleOAuth(userId: string, code: string) {
     : await supabaseAdmin.from("integration_connections").insert(payload);
 
   if (error) dbError(error);
+}
+
+export async function getSelectedCalendarIds(userId: string): Promise<string[] | null> {
+  const row = await loadConnection(userId);
+  const ids = row?.selected_calendar_ids;
+  // NULL / missing column → caller uses Google CalendarList selected flags.
+  if (!Array.isArray(ids)) return null;
+  // Empty array is stored on purpose and means "read none" — do not coerce to null.
+  return ids.filter((id) => typeof id === "string" && id.trim());
+}
+
+export async function saveSelectedCalendarIds(userId: string, calendarIds: string[]) {
+  const row = await loadConnection(userId);
+  if (!row || row.status !== "connected") {
+    throw new AppError("Google is not connected", 409);
+  }
+
+  const unique = [...new Set(calendarIds.map((id) => id.trim()).filter(Boolean))];
+  const { error } = await supabaseAdmin
+    .from("integration_connections")
+    .update({
+      selected_calendar_ids: unique,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("provider", PROVIDER);
+
+  if (error) dbError(error);
+  return unique;
 }
 
 export async function getValidGoogleAccessToken(userId: string): Promise<string> {
@@ -217,6 +289,7 @@ export async function disconnectGoogle(userId: string) {
       access_token_encrypted: null,
       refresh_token_encrypted: null,
       token_expires_at: null,
+      selected_calendar_ids: null,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId)

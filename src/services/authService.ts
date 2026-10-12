@@ -28,6 +28,16 @@ export const authService = {
     return supabase.auth.signOut();
   },
 
+  signInWithGoogle(redirectTo: string) {
+    return supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo,
+        skipBrowserRedirect: false,
+      },
+    });
+  },
+
   updateProfile(fullName: string) {
     return supabase.auth.updateUser({
       data: { full_name: fullName },
@@ -58,7 +68,7 @@ export const authService = {
     callback: (
       event: AuthChangeEvent,
       session: Session | null
-    ) => Promise<void>
+    ) => void | Promise<void>
   ) {
     return supabase.auth.onAuthStateChange(callback);
   },

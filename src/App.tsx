@@ -1,5 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import LoginPage from "./features/auth/LoginPage";
+import AuthCallbackPage from "./features/auth/AuthCallbackPage";
+import OAuthReturnHandler from "./features/auth/OAuthReturnHandler";
 import RecoveryPage from "./features/auth/RecoveryPage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import DashboardPage from "./features/dashboard/DashboardPage";
@@ -11,6 +13,7 @@ import EmployeeConfigPage from "./features/employees/EmployeeConfigPage";
 import { EmployeesProvider } from "./features/employees/EmployeesContext";
 import { NotificationsProvider } from "./features/notifications/NotificationsContext";
 import SettingsPage from "./features/settings/SettingsPage";
+import CalendarPage from "./features/calendar/CalendarPage";
 import LandingPage from "./features/landing/LandingPage";
 import { LocaleProvider } from "./i18n/LocaleProvider";
 import { unknownPathFallback } from "./i18n/paths";
@@ -30,6 +33,7 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/pt/login" element={<LoginPage />} />
       <Route path="/es/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
       <Route path="/forgot-password" element={<RecoveryPage />} />
       <Route path="/reset-password" element={<RecoveryPage />} />
@@ -79,6 +83,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/calendar"
+        element={
+          <ProtectedRoute>
+            <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/settings"
         element={
           <ProtectedRoute>
@@ -95,6 +107,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <LocaleProvider>
+      <OAuthReturnHandler />
       <NotificationsProvider>
         <EmployeesProvider>
           <WorkflowsProvider>
