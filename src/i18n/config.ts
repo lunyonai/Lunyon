@@ -33,12 +33,27 @@ export function isLoginPath(pathname: string): boolean {
   );
 }
 
+export function isRecoveryPath(pathname: string): boolean {
+  return (
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/pt/forgot-password" ||
+    pathname === "/pt/reset-password" ||
+    pathname === "/es/forgot-password" ||
+    pathname === "/es/reset-password"
+  );
+}
+
+export function isAuthPath(pathname: string): boolean {
+  return isLoginPath(pathname) || isRecoveryPath(pathname);
+}
+
 export function isPublicPath(pathname: string): boolean {
   return (
     pathname === "/" ||
     pathname === "/pt" ||
     pathname === "/es" ||
-    isLoginPath(pathname)
+    isAuthPath(pathname)
   );
 }
 

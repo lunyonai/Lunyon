@@ -4,11 +4,13 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 export class ApiError extends Error {
   status: number;
+  code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -140,11 +142,20 @@ export async function apiRequest<T>(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+  const url = `${API_URL}${path}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+  } catch {
+    if (import.meta.env.DEV) {
+      console.warn("[lunyon-api]", options.method ?? "GET", path, "unreachable", API_URL);
+    }
+    throw new ApiError("Lunyon API is unreachable", 0, "NETWORK");
+  }
 
   const text = await response.text();
   let data: unknown = {};
@@ -157,14 +168,17 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
+    const payload =
+      typeof data === "object" && data !== null
+        ? (data as { error?: unknown; code?: unknown })
+        : {};
     const message =
-      typeof data === "object" &&
-      data !== null &&
-      "error" in data &&
-      typeof (data as { error?: unknown }).error === "string"
-        ? (data as { error: string }).error
-        : "API request failed";
-    throw new ApiError(message, response.status);
+      typeof payload.error === "string" ? payload.error : "API request failed";
+    const code = typeof payload.code === "string" ? payload.code : undefined;
+    if (import.meta.env.DEV) {
+      console.warn("[lunyon-api]", options.method ?? "GET", path, response.status, code ?? "NO_CODE");
+    }
+    throw new ApiError(message, response.status, code);
   }
 
   return data as T;

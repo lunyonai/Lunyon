@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { LOCALES, localeMeta, isPublicPath } from "../../i18n/config";
-import { homePath, loginPath } from "../../i18n/paths";
+import { localeSwitchPath } from "../../i18n/paths";
 import { useLocale } from "../../i18n/LocaleProvider";
 
 export default function LanguageSwitcher() {
@@ -9,13 +9,7 @@ export default function LanguageSwitcher() {
   const publicPath = isPublicPath(pathname);
 
   function targetFor(next: (typeof LOCALES)[number]) {
-    if (pathname === "/login" || pathname === "/pt/login" || pathname === "/es/login") {
-      return loginPath(next);
-    }
-    return {
-      pathname: homePath(next),
-      hash: hash.replace(/^#/, ""),
-    };
+    return localeSwitchPath(next, pathname, hash);
   }
 
   return (

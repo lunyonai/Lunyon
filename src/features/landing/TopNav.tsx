@@ -4,14 +4,14 @@ import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Logo from "../auth/components/Logo";
 import LanguageSwitcher from "./LanguageSwitcher";
-import { isLoginPath } from "../../i18n/config";
+import { isAuthPath } from "../../i18n/config";
 import { homePath, loginPath, sectionHref } from "../../i18n/paths";
 import { useLocale } from "../../i18n/LocaleProvider";
 
 export default function TopNav() {
   const { pathname } = useLocation();
   const { locale, t } = useLocale();
-  const onLogin = isLoginPath(pathname);
+  const onAuth = isAuthPath(pathname);
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -76,10 +76,10 @@ export default function TopNav() {
         <div className="relative z-10 flex items-center gap-3">
           <LanguageSwitcher />
           <Link
-            to={onLogin ? homePath(locale) : loginPath(locale)}
+            to={onAuth ? homePath(locale) : loginPath(locale)}
             className="hidden text-sm font-medium text-[var(--lunyo-text-muted)] transition hover:text-[var(--lunyo-text)] md:inline-flex"
           >
-            {onLogin ? t("nav.backHome") : t("nav.signIn")}
+            {onAuth ? t("nav.backHome") : t("nav.signIn")}
           </Link>
 
           <button
@@ -115,11 +115,11 @@ export default function TopNav() {
                 </a>
               ))}
               <Link
-                to={onLogin ? homePath(locale) : loginPath(locale)}
+                to={onAuth ? homePath(locale) : loginPath(locale)}
                 className="mt-1 rounded-[var(--lunyo-radius)] px-3 py-2.5 text-sm font-medium text-[var(--lunyo-text)] transition hover:bg-[var(--lunyo-surface)]"
                 onClick={() => setMobileOpen(false)}
               >
-                {onLogin ? t("nav.backHome") : t("nav.signIn")}
+                {onAuth ? t("nav.backHome") : t("nav.signIn")}
               </Link>
               <div className="mt-3 px-3">
                 <LanguageSwitcher />

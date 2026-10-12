@@ -38,8 +38,16 @@ export const authService = {
     return supabase.auth.updateUser({ password });
   },
 
-  resetPassword(email: string) {
-    return supabase.auth.resetPasswordForEmail(email);
+  resetPassword(email: string, redirectTo: string) {
+    return supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  },
+
+  verifyRecoveryOtp(email: string, token: string) {
+    return supabase.auth.verifyOtp({
+      email,
+      token,
+      type: "recovery",
+    });
   },
 
   getSession() {

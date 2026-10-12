@@ -2,10 +2,10 @@ import { ArrowRight, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import Logo from "./Logo";
-import { useNavigate } from "react-router-dom";
-
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocale } from "../../../i18n/LocaleProvider";
+import { forgotPasswordPath } from "../../../i18n/paths";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -26,7 +26,7 @@ const item = {
 
 export default function LoginForm() {
   const navigate = useNavigate();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
 
   const { login, register } = useAuth();
 
@@ -38,6 +38,28 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  function authMessage(err: unknown) {
+    if (err instanceof Error) {
+      const code = "code" in err ? String((err as { code?: string }).code) : "";
+      const text = err.message.toLowerCase();
+      if (err.message === "NO_SESSION") return t("login.errors.noSession");
+      if (
+        code === "invalid_credentials" ||
+        text.includes("invalid login") ||
+        text.includes("invalid credentials")
+      ) {
+        return t("login.errors.invalid");
+      }
+      if (code === "email_not_confirmed" || text.includes("email not confirmed")) {
+        return t("login.errors.unconfirmed");
+      }
+      if (text.includes("failed to fetch") || text.includes("network request")) {
+        return t("login.errors.network");
+      }
+    }
+    return t("login.fallbackError");
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,11 +76,7 @@ export default function LoginForm() {
 
       navigate("/dashboard");
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : t("login.fallbackError");
-      setError(message);
+      setError(authMessage(err));
     } finally {
       setLoading(false);
     }
@@ -157,6 +175,17 @@ export default function LoginForm() {
               />
             </div>
           </label>
+
+          {!isSignup && (
+            <div className="flex justify-end">
+              <Link
+                to={forgotPasswordPath(locale)}
+                className="inline-flex min-h-8 items-center text-sm font-medium text-[var(--lunyo-primary)] underline-offset-4 transition hover:underline hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lunyo-primary)]"
+              >
+                {t("login.forgotPassword")}
+              </Link>
+            </div>
+          )}
 
           {error && (
             <div className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300">

@@ -8,6 +8,18 @@ export function loginPath(locale: Locale): string {
   return locale === DEFAULT_LOCALE ? "/login" : `/${locale}/login`;
 }
 
+export function forgotPasswordPath(locale: Locale): string {
+  return locale === DEFAULT_LOCALE
+    ? "/forgot-password"
+    : `/${locale}/forgot-password`;
+}
+
+export function resetPasswordPath(locale: Locale): string {
+  return locale === DEFAULT_LOCALE
+    ? "/reset-password"
+    : `/${locale}/reset-password`;
+}
+
 export function sectionHref(locale: Locale, sectionId: string): string {
   const hash = sectionId.startsWith("#") ? sectionId : `#${sectionId}`;
   return `${homePath(locale)}${hash}`;
@@ -24,6 +36,12 @@ export function localeSwitchPath(
     pathname === "/es/login"
   ) {
     return loginPath(next);
+  }
+  if (pathname.endsWith("/forgot-password")) {
+    return forgotPasswordPath(next);
+  }
+  if (pathname.endsWith("/reset-password")) {
+    return resetPasswordPath(next);
   }
   return `${homePath(next)}${hash}`;
 }

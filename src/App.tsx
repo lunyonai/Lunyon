@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import LoginPage from "./features/auth/LoginPage";
+import RecoveryPage from "./features/auth/RecoveryPage";
 import ProtectedRoute from "./features/auth/ProtectedRoute";
 import DashboardPage from "./features/dashboard/DashboardPage";
 import PromptLibraryPage from "./features/prompts/PromptLibraryPage";
@@ -29,6 +30,13 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/pt/login" element={<LoginPage />} />
       <Route path="/es/login" element={<LoginPage />} />
+
+      <Route path="/forgot-password" element={<RecoveryPage />} />
+      <Route path="/reset-password" element={<RecoveryPage />} />
+      <Route path="/pt/forgot-password" element={<RecoveryPage />} />
+      <Route path="/pt/reset-password" element={<RecoveryPage />} />
+      <Route path="/es/forgot-password" element={<RecoveryPage />} />
+      <Route path="/es/reset-password" element={<RecoveryPage />} />
 
       <Route
         path="/dashboard"

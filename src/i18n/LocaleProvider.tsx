@@ -17,7 +17,12 @@ import {
   type Locale,
 } from "./config";
 import { dictionaries, interpolate } from "./dictionaries";
-import { homePath, loginPath } from "./paths";
+import {
+  forgotPasswordPath,
+  homePath,
+  loginPath,
+  resetPasswordPath,
+} from "./paths";
 import type { Messages } from "./en";
 
 type LocaleContextValue = {
@@ -45,10 +50,12 @@ function setLinkTag(rel: string, href: string, hreflang?: string) {
 
 function applyDocumentMeta(locale: Locale, messages: Messages, pathname: string) {
   const origin = window.location.origin;
-  const onLogin =
+  const onAuth =
     pathname === "/login" ||
     pathname === "/pt/login" ||
-    pathname === "/es/login";
+    pathname === "/es/login" ||
+    pathname.endsWith("/forgot-password") ||
+    pathname.endsWith("/reset-password");
   const publicPath = isPublicPath(pathname);
 
   document.documentElement.lang = localeMeta[locale].htmlLang;
@@ -64,28 +71,27 @@ function applyDocumentMeta(locale: Locale, messages: Messages, pathname: string)
 
   if (!publicPath) return;
 
-  const canonicalPath = onLogin ? loginPath(locale) : homePath(locale);
+  const canonicalPath = onAuth
+    ? pathname.endsWith("/forgot-password")
+      ? forgotPasswordPath(locale)
+      : pathname.endsWith("/reset-password")
+        ? resetPasswordPath(locale)
+        : loginPath(locale)
+    : homePath(locale);
   setLinkTag("canonical", `${origin}${canonicalPath}`);
-  setLinkTag(
-    "alternate",
-    `${origin}${onLogin ? loginPath("en") : homePath("en")}`,
-    "en",
-  );
-  setLinkTag(
-    "alternate",
-    `${origin}${onLogin ? loginPath("pt") : homePath("pt")}`,
-    "pt",
-  );
-  setLinkTag(
-    "alternate",
-    `${origin}${onLogin ? loginPath("es") : homePath("es")}`,
-    "es",
-  );
-  setLinkTag(
-    "alternate",
-    `${origin}${onLogin ? "/login" : "/"}`,
-    "x-default",
-  );
+  const altPath = (item: Locale) =>
+    pathname.endsWith("/forgot-password")
+      ? forgotPasswordPath(item)
+      : pathname.endsWith("/reset-password")
+        ? resetPasswordPath(item)
+        : onAuth
+          ? loginPath(item)
+          : homePath(item);
+
+  setLinkTag("alternate", `${origin}${altPath("en")}`, "en");
+  setLinkTag("alternate", `${origin}${altPath("pt")}`, "pt");
+  setLinkTag("alternate", `${origin}${altPath("es")}`, "es");
+  setLinkTag("alternate", `${origin}${altPath("en")}`, "x-default");
 }
 
 export function LocaleProvider({ children }: { children: ReactNode }) {

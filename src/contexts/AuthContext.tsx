@@ -15,13 +15,16 @@ type AuthContextType = {
   session: Session | null;
   me: MeResponse | null;
   loading: boolean;
+  recovering: boolean;
 
   login(email: string, password: string): Promise<void>;
   register(email: string, password: string, fullName?: string): Promise<void>;
   logout(): Promise<void>;
   updateProfile(fullName: string): Promise<void>;
   updatePassword(password: string): Promise<void>;
-  resetPassword(email: string): Promise<void>;
+  resetPassword(email: string, redirectTo?: string): Promise<void>;
+  verifyRecoveryOtp(email: string, token: string): Promise<void>;
+  completeRecovery(): Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>(
@@ -41,6 +44,7 @@ export function AuthProvider({
     useState<Session | null>(null);
 
   const [me, setMe] = useState<MeResponse | null>(null);
+  const [recovering, setRecovering] = useState(false);
 
   useEffect(() => {
     authService.getSession().then(({ data }) => {
@@ -51,7 +55,13 @@ export function AuthProvider({
 
     const {
       data: { subscription },
-    } = authService.onAuthStateChange(async (_event, nextSession) => {
+    } = authService.onAuthStateChange(async (event, nextSession) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setRecovering(true);
+      }
+      if (event === "SIGNED_OUT") {
+        setRecovering(false);
+      }
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
     });
@@ -60,8 +70,8 @@ export function AuthProvider({
   }, []);
 
   useEffect(() => {
-    if (!session?.access_token) {
-      setMe(null);
+    if (recovering || !session?.access_token) {
+      if (!session?.access_token) setMe(null);
       return;
     }
 
@@ -84,12 +94,18 @@ export function AuthProvider({
     email: string,
     password: string
   ) {
-    const { error } = await authService.signIn(
+    const { data, error } = await authService.signIn(
       email,
       password
     );
 
     if (error) throw error;
+    if (!data.session?.user) {
+      throw new Error("NO_SESSION");
+    }
+
+    setSession(data.session);
+    setUser(data.session.user);
   }
 
   async function register(
@@ -97,13 +113,19 @@ export function AuthProvider({
     password: string,
     fullName?: string
   ) {
-    const { error } = await authService.signUp(
+    const { data, error } = await authService.signUp(
       email,
       password,
       fullName
     );
 
     if (error) throw error;
+    if (!data.session?.user) {
+      throw new Error("NO_SESSION");
+    }
+
+    setSession(data.session);
+    setUser(data.session.user);
   }
 
   async function logout() {
@@ -121,9 +143,30 @@ export function AuthProvider({
     if (error) throw error;
   }
 
-  async function resetPassword(email: string) {
-    const { error } = await authService.resetPassword(email);
+  async function resetPassword(email: string, redirectTo?: string) {
+    const target =
+      redirectTo ?? `${window.location.origin}/reset-password`;
+    const { error } = await authService.resetPassword(email, target);
     if (error) throw error;
+  }
+
+  async function verifyRecoveryOtp(email: string, token: string) {
+    const { data, error } = await authService.verifyRecoveryOtp(email, token);
+    if (error) throw error;
+    if (!data.session?.user) {
+      throw new Error("NO_SESSION");
+    }
+    setRecovering(true);
+    setSession(data.session);
+    setUser(data.session.user);
+  }
+
+  async function completeRecovery() {
+    await authService.signOut();
+    setRecovering(false);
+    setSession(null);
+    setUser(null);
+    setMe(null);
   }
 
   return (
@@ -133,12 +176,15 @@ export function AuthProvider({
         session,
         me,
         loading,
+        recovering,
         login,
         register,
         logout,
         updateProfile,
         updatePassword,
         resetPassword,
+        verifyRecoveryOtp,
+        completeRecovery,
       }}
     >
       {children}
