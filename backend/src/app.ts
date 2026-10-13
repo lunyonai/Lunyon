@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import { corsOptions } from "./config/cors.js";
 import { env } from "./config/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import authRoutes from "./routes/auth.js";
@@ -15,13 +16,13 @@ import { handleStripeWebhook } from "./services/stripeService.js";
 export function createApp() {
   const app = express();
 
-  app.use(helmet());
   app.use(
-    cors({
-      origin: env.FRONTEND_URL,
-      credentials: true,
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
     }),
   );
+  app.use(cors(corsOptions));
+  app.options("/{*path}", cors(corsOptions));
 
   app.get("/health", (_req, res) => {
     res.json({
