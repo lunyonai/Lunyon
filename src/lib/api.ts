@@ -86,6 +86,17 @@ export type GoogleCalendarListItem = {
   writable: boolean;
 };
 
+export type GmailStatus = {
+  connected: boolean;
+  status: "disconnected" | "connected" | "error";
+  email: string | null;
+  canRead: boolean;
+  canSend: boolean;
+  capabilities: string[];
+};
+
+export type GmailFolder = "inbox" | "sent" | "all";
+
 export type GmailMessageSummary = {
   id: string;
   threadId: string | null;
@@ -93,7 +104,64 @@ export type GmailMessageSummary = {
   from: string | null;
   to: string | null;
   date: string | null;
+  internalDate?: string | null;
   snippet: string | null;
+  unread: boolean;
+  labelIds: string[];
+};
+
+export type GmailMessageDetail = GmailMessageSummary & {
+  cc: string | null;
+  messageIdHeader: string | null;
+  references: string | null;
+  bodyText: string | null;
+  bodyHtml: string | null;
+  attachments: Array<{ filename: string; mimeType: string; size: number }>;
+};
+
+export type GmailSendDraft = {
+  idempotencyKey: string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  text: string;
+  replyAll?: boolean;
+};
+
+export type GmailSendPreview = {
+  confirmationToken: string;
+  expiresInSeconds: number;
+  action: "send" | "reply";
+  summary: {
+    from: string;
+    to: string[];
+    cc: string[];
+    bcc: string[];
+    subject: string;
+    text: string;
+    threadId: string | null;
+  };
+};
+
+export type GmailSendResult = {
+  ok: boolean;
+  action?: "send" | "reply";
+  gmailMessageId?: string | null;
+  threadId?: string | null;
+  replayed?: boolean;
+};
+
+export type GmailListPage = {
+  folder: GmailFolder;
+  messages: GmailMessageSummary[];
+  nextPageToken: string | null;
+  resultSizeEstimate: number | null;
+};
+
+export type GmailThreadDetail = {
+  id: string;
+  messages: GmailMessageDetail[];
 };
 
 export type CalendarEventSummary = {
@@ -348,6 +416,83 @@ export const api = {
   gmailMessages(limit = 10) {
     return apiRequest<GmailMessageSummary[]>(
       `/api/integrations/google/gmail/messages?limit=${limit}`,
+    );
+  },
+
+  gmailStatus() {
+    return apiRequest<GmailStatus>("/api/integrations/gmail/status");
+  },
+
+  gmailConnect(send = false) {
+    return apiRequest<{ url: string }>(
+      `/api/integrations/gmail/connect${send ? "?send=1" : ""}`,
+    );
+  },
+
+  gmailDisconnect() {
+    return apiRequest<GmailStatus>("/api/integrations/gmail", { method: "DELETE" });
+  },
+
+  gmailInbox(
+    options: { limit?: number; pageToken?: string; q?: string; folder?: GmailFolder } = {},
+  ) {
+    const params = new URLSearchParams();
+    params.set("limit", String(options.limit ?? 20));
+    params.set("folder", options.folder ?? "inbox");
+    if (options.pageToken) params.set("pageToken", options.pageToken);
+    if (options.q) params.set("q", options.q);
+    return apiRequest<GmailListPage>(`/api/integrations/gmail/messages?${params.toString()}`);
+  },
+
+  gmailSearch(
+    q: string,
+    options: { limit?: number; pageToken?: string; folder?: GmailFolder } = {},
+  ) {
+    const params = new URLSearchParams();
+    params.set("q", q);
+    params.set("limit", String(options.limit ?? 20));
+    params.set("folder", options.folder ?? "inbox");
+    if (options.pageToken) params.set("pageToken", options.pageToken);
+    return apiRequest<GmailListPage>(`/api/integrations/gmail/search?${params.toString()}`);
+  },
+
+  gmailMessage(id: string) {
+    return apiRequest<GmailMessageDetail>(
+      `/api/integrations/gmail/messages/${encodeURIComponent(id)}`,
+    );
+  },
+
+  gmailThread(id: string) {
+    return apiRequest<GmailThreadDetail>(
+      `/api/integrations/gmail/threads/${encodeURIComponent(id)}`,
+    );
+  },
+
+  previewGmailSend(body: GmailSendDraft) {
+    return apiRequest<GmailSendPreview>("/api/integrations/gmail/messages/preview", {
+      method: "POST",
+      body,
+    });
+  },
+
+  commitGmailSend(confirmationToken: string) {
+    return apiRequest<GmailSendResult>("/api/integrations/gmail/messages", {
+      method: "POST",
+      body: { confirmationToken },
+    });
+  },
+
+  previewGmailReply(messageId: string, body: GmailSendDraft) {
+    return apiRequest<GmailSendPreview>(
+      `/api/integrations/gmail/messages/${encodeURIComponent(messageId)}/reply/preview`,
+      { method: "POST", body },
+    );
+  },
+
+  commitGmailReply(messageId: string, confirmationToken: string) {
+    return apiRequest<GmailSendResult>(
+      `/api/integrations/gmail/messages/${encodeURIComponent(messageId)}/reply`,
+      { method: "POST", body: { confirmationToken } },
     );
   },
 

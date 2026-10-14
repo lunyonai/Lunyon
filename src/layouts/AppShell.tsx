@@ -2,6 +2,7 @@ import {
   Bot,
   CalendarDays,
   House,
+  Mail,
   LibraryBig,
   PanelLeft,
   Settings,
@@ -26,6 +27,7 @@ const navigation = [
   { key: "prompts", icon: LibraryBig, to: "/prompts" },
   { key: "workflows", icon: Workflow, to: "/workflows" },
   { key: "calendar", icon: CalendarDays, to: "/calendar" },
+  { key: "mail", icon: Mail, to: "/mail" },
 ] as const;
 
 function headerCopy(
@@ -60,6 +62,12 @@ function headerCopy(
     return {
       title: t("app.nav.calendar"),
       subtitle: t("app.calendar.subtitle"),
+    };
+  }
+  if (pathname === "/mail") {
+    return {
+      title: t("app.nav.mail"),
+      subtitle: t("app.mail.subtitle"),
     };
   }
   if (pathname === "/settings") {
