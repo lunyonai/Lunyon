@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   LOCAL_FRONTEND_ORIGIN,
   PRODUCTION_FRONTEND_ORIGIN,
+  corsOptions,
   isAllowedCorsOrigin,
 } from "./cors.js";
 
@@ -21,4 +22,15 @@ test("allows missing Origin for non-browser clients", () => {
 test("rejects unknown origins without using a wildcard", () => {
   assert.equal(isAllowedCorsOrigin("https://evil.example"), false);
   assert.equal(isAllowedCorsOrigin("*"), false);
+});
+
+test("allows Authorization without a wildcard origin", () => {
+  assert.equal(corsOptions.credentials, true);
+  assert.deepEqual(corsOptions.allowedHeaders, [
+    "Authorization",
+    "Content-Type",
+    "Accept",
+    "Cache-Control",
+  ]);
+  assert.notEqual(corsOptions.origin, "*");
 });

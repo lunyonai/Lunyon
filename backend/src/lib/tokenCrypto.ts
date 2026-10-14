@@ -43,15 +43,26 @@ export function decryptSecret(payload: string): string {
   return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8");
 }
 
-export function signOAuthState(userId: string): string {
+export type OAuthPurpose = "calendar" | "gmail" | "gmail_send";
+
+export type OAuthStatePayload = {
+  userId: string;
+  purpose: OAuthPurpose;
+};
+
+function isOAuthPurpose(value: string): value is OAuthPurpose {
+  return value === "calendar" || value === "gmail" || value === "gmail_send";
+}
+
+export function signOAuthState(userId: string, purpose: OAuthPurpose = "calendar"): string {
   const exp = Date.now() + 10 * 60 * 1000;
   const nonce = randomBytes(16).toString("hex");
-  const body = `${userId}.${exp}.${nonce}`;
+  const body = `${userId}.${exp}.${nonce}.${purpose}`;
   const mac = createHmac("sha256", encryptionKey()).update(body).digest("hex");
   return Buffer.from(`${body}.${mac}`).toString("base64url");
 }
 
-export function verifyOAuthState(state: string): string {
+export function verifyOAuthState(state: string): OAuthStatePayload {
   let decoded: string;
   try {
     decoded = Buffer.from(state, "base64url").toString("utf8");
@@ -60,15 +71,20 @@ export function verifyOAuthState(state: string): string {
   }
 
   const parts = decoded.split(".");
-  if (parts.length !== 4) throw new AppError("Invalid OAuth state", 400);
-  const [userId, expRaw, nonce, mac] = parts;
-  if (!userId || !expRaw || !nonce || !mac) {
+  const purpose: OAuthPurpose =
+    parts.length === 5 && isOAuthPurpose(parts[3]) ? parts[3] : "calendar";
+  const userId = parts[0];
+  const expRaw = parts[1];
+  const nonce = parts[2];
+  const mac = parts.length === 5 ? parts[4] : parts[3];
+  const signedBody =
+    parts.length === 5 ? `${userId}.${expRaw}.${nonce}.${purpose}` : `${userId}.${expRaw}.${nonce}`;
+
+  if (!userId || !expRaw || !nonce || !mac || (parts.length !== 4 && parts.length !== 5)) {
     throw new AppError("Invalid OAuth state", 400);
   }
 
-  const expected = createHmac("sha256", encryptionKey())
-    .update(`${userId}.${expRaw}.${nonce}`)
-    .digest("hex");
+  const expected = createHmac("sha256", encryptionKey()).update(signedBody).digest("hex");
   const a = Buffer.from(mac);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !timingSafeEqual(a, b)) {
@@ -80,5 +96,5 @@ export function verifyOAuthState(state: string): string {
     throw new AppError("OAuth state expired", 400);
   }
 
-  return userId;
+  return { userId, purpose };
 }

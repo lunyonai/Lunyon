@@ -9,6 +9,7 @@ import {
   refreshGoogleAccessToken,
   revokeGoogleToken,
 } from "./googleOAuth.js";
+import { calendarPeerStillConnected } from "./gmailConnectionService.js";
 
 const PROVIDER = "google";
 
@@ -266,16 +267,19 @@ export async function disconnectGoogle(userId: string) {
   const row = await loadConnection(userId);
   if (!row) return publicStatus(null);
 
-  const candidates = [
-    row.access_token_encrypted,
-    row.refresh_token_encrypted,
-  ].filter((item): item is string => Boolean(item));
+  const gmailStillConnected = await calendarPeerStillConnected(userId);
+  if (!gmailStillConnected) {
+    const candidates = [
+      row.access_token_encrypted,
+      row.refresh_token_encrypted,
+    ].filter((item): item is string => Boolean(item));
 
-  for (const encrypted of candidates) {
-    try {
-      await revokeGoogleToken(decryptSecret(encrypted));
-    } catch {
-      // continue
+    for (const encrypted of candidates) {
+      try {
+        await revokeGoogleToken(decryptSecret(encrypted));
+      } catch {
+        // continue
+      }
     }
   }
 

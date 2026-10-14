@@ -15,6 +15,16 @@ export const GOOGLE_CALENDAR_WRITE_SCOPE =
 
 export const GOOGLE_CALENDAR_SCOPES = GOOGLE_CALENDAR_READ_SCOPES;
 
+/** Gmail connection only. Sending is a later, explicit grant. */
+export const GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
+export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
+
+export const GOOGLE_GMAIL_READ_SCOPES = [
+  "openid",
+  "https://www.googleapis.com/auth/userinfo.email",
+  GMAIL_READ_SCOPE,
+] as const;
+
 export function hasCalendarListScope(scopes: string[] | null | undefined) {
   return (scopes ?? []).some(
     (scope) =>
@@ -48,6 +58,31 @@ export function createGoogleClient() {
   );
 }
 
+export function hasGmailReadScope(scopes: string[] | null | undefined) {
+  return (scopes ?? []).some((scope) => {
+    const normalized = scope.replace(/\/$/, "");
+    return (
+      normalized === GMAIL_READ_SCOPE ||
+      normalized.endsWith("/auth/gmail.readonly") ||
+      normalized.endsWith("/auth/gmail.modify") ||
+      normalized === "https://www.googleapis.com/auth/gmail"
+    );
+  });
+}
+
+export function hasGmailSendScope(scopes: string[] | null | undefined) {
+  return (scopes ?? []).some((scope) => {
+    const normalized = scope.replace(/\/$/, "");
+    return (
+      normalized === GMAIL_SEND_SCOPE ||
+      normalized.endsWith("/auth/gmail.send") ||
+      normalized.endsWith("/auth/gmail.compose") ||
+      normalized.endsWith("/auth/gmail.modify") ||
+      normalized === "https://www.googleapis.com/auth/gmail"
+    );
+  });
+}
+
 export function googleAuthUrl(state: string, write = false) {
   const client = createGoogleClient();
   return client.generateAuthUrl({
@@ -55,6 +90,17 @@ export function googleAuthUrl(state: string, write = false) {
     prompt: "consent",
     include_granted_scopes: write,
     scope: write ? [GOOGLE_CALENDAR_WRITE_SCOPE] : [...GOOGLE_CALENDAR_READ_SCOPES],
+    state,
+  });
+}
+
+export function gmailAuthUrl(state: string, send = false) {
+  const client = createGoogleClient();
+  return client.generateAuthUrl({
+    access_type: "offline",
+    include_granted_scopes: send,
+    ...(send ? {} : { prompt: "consent" }),
+    scope: send ? [GMAIL_SEND_SCOPE] : [...GOOGLE_GMAIL_READ_SCOPES],
     state,
   });
 }

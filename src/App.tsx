@@ -14,6 +14,7 @@ import { EmployeesProvider } from "./features/employees/EmployeesContext";
 import { NotificationsProvider } from "./features/notifications/NotificationsContext";
 import SettingsPage from "./features/settings/SettingsPage";
 import CalendarPage from "./features/calendar/CalendarPage";
+import MailPage from "./features/mail/MailPage";
 import LandingPage from "./features/landing/LandingPage";
 import { LocaleProvider } from "./i18n/LocaleProvider";
 import { unknownPathFallback } from "./i18n/paths";
@@ -87,6 +88,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <CalendarPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mail"
+        element={
+          <ProtectedRoute>
+            <MailPage />
           </ProtectedRoute>
         }
       />
