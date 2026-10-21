@@ -31,6 +31,7 @@ export function errorHandler(
     return res.status(400).json({ error: "Invalid request" });
   }
 
-  console.error("[lunyon-api]", req.method, req.path, 500, "INTERNAL");
+  // Unexpected errors keep their stack in the server log; the client only gets a generic message.
+  console.error("[lunyon-api]", req.method, req.path, 500, "INTERNAL", err);
   return res.status(500).json({ error: "Internal server error" });
 }

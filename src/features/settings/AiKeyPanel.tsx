@@ -86,9 +86,9 @@ export default function AiKeyPanel() {
       ) : (
         status?.freeAvailable && (
           <p className="mt-4 text-sm text-slate-300">
-            {t("app.agent.key.freeUsage", {
+            {t(status.planActive ? "app.agent.key.planUsage" : "app.agent.key.freeUsage", {
               used: status.usedToday,
-              limit: status.freeDailyLimit,
+              limit: status.dailyLimit,
             })}
           </p>
         )

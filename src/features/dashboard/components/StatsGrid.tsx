@@ -8,11 +8,14 @@ import { useMemo } from "react";
 import { useEmployees } from "../../employees/EmployeesContext";
 import { useWorkflows } from "../../workflows/WorkflowsContext";
 import { useLocale } from "../../../i18n/LocaleProvider";
+import { useActivity } from "../../activity/ActivityContext";
+import { formatDuration } from "../../activity/activityView";
 
 export default function StatsGrid() {
   const { t } = useLocale();
   const { employees } = useEmployees();
   const { workflows } = useWorkflows();
+  const { stats: activityStats } = useActivity();
 
   const stats = useMemo(() => {
     return [
@@ -28,7 +31,7 @@ export default function StatsGrid() {
       {
         key: "prompts",
         title: t("app.dashboard.statPrompts"),
-        value: "—",
+        value: activityStats ? activityStats.totals.prompt : "—",
         subtitle: t("app.dashboard.statPromptsSub"),
         icon: Sparkles,
         color: "text-violet-400",
@@ -37,8 +40,10 @@ export default function StatsGrid() {
       {
         key: "workflows",
         title: t("app.dashboard.statWorkflows"),
-        value: workflows.filter((item) => item.status === "active").length,
-        subtitle: t("app.dashboard.statWorkflowsSub"),
+        value: activityStats ? activityStats.totals.workflow : "—",
+        subtitle: t("app.dashboard.statWorkflowsSub", {
+          active: workflows.filter((item) => item.status === "active").length,
+        }),
         icon: Workflow,
         color: "text-emerald-400",
         bg: "bg-emerald-500/10",
@@ -46,14 +51,14 @@ export default function StatsGrid() {
       {
         key: "runtime",
         title: t("app.dashboard.statRuntime"),
-        value: "—",
+        value: formatDuration(activityStats?.avgDurationMs),
         subtitle: t("app.dashboard.statRuntimeSub"),
         icon: Clock3,
         color: "text-orange-400",
         bg: "bg-orange-500/10",
       },
     ];
-  }, [employees.length, t, workflows]);
+  }, [activityStats, employees.length, t, workflows]);
 
   return (
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -71,7 +76,6 @@ export default function StatsGrid() {
                 <Icon className={`h-5 w-5 ${card.color}`} />
               </div>
 
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
 
             </div>
 

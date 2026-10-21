@@ -249,10 +249,21 @@ export type WorkflowStepPayload = {
   params?: Record<string, string | number | boolean | null>;
 };
 
+export type AiLocale = "en" | "pt" | "es";
+
+export type WorkflowSchedule = {
+  frequency: "daily" | "weekdays" | "weekly";
+  time: string;
+  weekday?: number;
+  timezone: string;
+  locale: AiLocale;
+};
+
 export type WorkflowPayload = {
   title: string;
   description?: string | null;
-  trigger?: "manual";
+  trigger?: "manual" | "schedule";
+  schedule?: WorkflowSchedule | null;
   steps: WorkflowStepPayload[];
   employeeId?: string | null;
   status?: "active" | "inactive";
@@ -262,12 +273,66 @@ export type WorkflowRecord = {
   id: string;
   title: string;
   description: string | null;
-  trigger: "manual";
+  trigger: "manual" | "schedule";
+  schedule: WorkflowSchedule | null;
   steps: WorkflowStepPayload[];
   employeeId: string | null;
   status: "active" | "inactive";
+  nextRunAt: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: "succeeded" | "failed" | null;
   createdAt?: string;
   updatedAt?: string;
+};
+
+export type WorkflowRunStep = {
+  id: string;
+  type: WorkflowStepPayload["type"];
+  status: "pending" | "running" | "succeeded" | "failed" | "skipped";
+  count?: number;
+  output?: string;
+  error?: string;
+  errorCode?: string;
+  durationMs?: number;
+};
+
+export type WorkflowRun = {
+  id: string;
+  workflowId: string;
+  trigger: "manual" | "schedule";
+  status: "running" | "succeeded" | "failed";
+  steps: WorkflowRunStep[];
+  output: string | null;
+  error: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+};
+
+export type ActivityRecord = {
+  id: string;
+  type: "prompt" | "employee" | "workflow";
+  refId: string | null;
+  subject: string;
+  detail: string | null;
+  status: "succeeded" | "failed";
+  durationMs: number | null;
+  createdAt: string;
+};
+
+export type ActivityStats = {
+  totals: Record<ActivityRecord["type"], number>;
+  today: number;
+  week: number;
+  workflowRunsWeek: number;
+  workflowFailuresWeek: number;
+  avgDurationMs: number | null;
+  byRef: Record<string, number>;
+};
+
+export type RunResult = {
+  output: string;
+  durationMs: number;
+  activity: ActivityRecord | null;
 };
 
 export type AgentProvider = "openai" | "gemini";
@@ -276,6 +341,9 @@ export type AgentStatus = {
   ownKey: { provider: AgentProvider; hint: string; updatedAt: string } | null;
   freeAvailable: boolean;
   freeDailyLimit: number;
+  /** Effective daily limit: own key, paid plan or free tier. */
+  dailyLimit: number;
+  planActive: boolean;
   usedToday: number;
 };
 
@@ -620,6 +688,61 @@ export const api = {
 
   deleteWorkflow(id: string) {
     return apiRequest<unknown>(`/api/workflows/${id}`, { method: "DELETE" });
+  },
+
+  runWorkflow(id: string, locale: AiLocale) {
+    return apiRequest<WorkflowRun>(`/api/workflows/${id}/run`, {
+      method: "POST",
+      body: { locale },
+    });
+  },
+
+  workflowRuns(id: string, limit = 10) {
+    return apiRequest<WorkflowRun[]>(`/api/workflows/${id}/runs?limit=${limit}`);
+  },
+
+  workflowRun(id: string, runId: string) {
+    return apiRequest<WorkflowRun>(`/api/workflows/${id}/runs/${runId}`);
+  },
+
+  runPrompt(promptId: string, input: string, locale: AiLocale) {
+    return apiRequest<RunResult>(`/api/ai/prompts/${encodeURIComponent(promptId)}/run`, {
+      method: "POST",
+      body: { input, locale },
+    });
+  },
+
+  runEmployee(id: string, task: string, locale: AiLocale) {
+    return apiRequest<RunResult>(`/api/employees/${id}/run`, {
+      method: "POST",
+      body: { task, locale },
+    });
+  },
+
+  activity(options: { limit?: number; type?: ActivityRecord["type"]; ref?: string } = {}) {
+    const params = new URLSearchParams({ limit: String(options.limit ?? 20) });
+    if (options.type) params.set("type", options.type);
+    if (options.ref) params.set("ref", options.ref);
+    return apiRequest<ActivityRecord[]>(`/api/activity?${params.toString()}`);
+  },
+
+  activityStats(timezone: string) {
+    return apiRequest<ActivityStats>(`/api/activity/stats?tz=${encodeURIComponent(timezone)}`);
+  },
+
+  stripeCheckout() {
+    return apiRequest<{ url: string | null; sessionId: string }>("/api/payments/stripe/checkout", {
+      method: "POST",
+      body: {},
+    });
+  },
+
+  exportAccount() {
+    return apiRequest<unknown>("/api/account/export");
+  },
+
+  deleteAccount(confirmEmail: string) {
+    return apiRequest<unknown>("/api/account", { method: "DELETE", body: { confirmEmail } });
   },
 
   agentStatus() {

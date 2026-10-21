@@ -1,22 +1,31 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowUpRight,
   CheckCircle2,
-  Clock3,
+  History,
+  Loader2,
   Play,
   Plus,
   Sparkles,
   Workflow,
 } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import AppShell from "../../layouts/AppShell";
+import { useActivity } from "../activity/ActivityContext";
+import { relativeTime } from "../activity/activityView";
 import { useEmployees } from "../employees/EmployeesContext";
 import { resolveEmployeeCopy } from "../employees/employeeView";
+import { localeMeta } from "../../i18n/config";
 import { useLocale } from "../../i18n/LocaleProvider";
+import { api } from "../../lib/api";
+import { aiErrorInfo } from "../../lib/aiErrors";
 import { useWorkflows } from "./WorkflowsContext";
 import WorkflowActionsMenu from "./WorkflowActionsMenu";
 import WorkflowFormPanel from "./WorkflowFormPanel";
+import WorkflowRunsPanel from "./WorkflowRunsPanel";
 import type { Workflow as WorkflowRecord } from "./workflowTypes";
+import { formatDateTime, scheduleLabel } from "./workflowView";
 
 function workflowCopy(
   workflow: WorkflowRecord,
@@ -25,15 +34,25 @@ function workflowCopy(
   return {
     title: workflow.title?.trim() || t("app.workflows.untitled"),
     description: workflow.description ?? "",
-    triggerLabel: t(`app.workflows.triggerOption.${workflow.trigger}`),
+    triggerLabel:
+      workflow.trigger === "schedule" && workflow.schedule
+        ? scheduleLabel(workflow.schedule, t)
+        : t(`app.workflows.triggerOption.${workflow.trigger}`),
   };
 }
 
 export default function WorkflowsPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const localeTag = localeMeta[locale].htmlLang;
   const location = useLocation();
-  const { workflows, loading, error } = useWorkflows();
+  const { workflows, loading, error, reloadWorkflow } = useWorkflows();
   const { employees } = useEmployees();
+  const { stats, refresh: refreshActivity } = useActivity();
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [runErrors, setRunErrors] = useState<
+    Record<string, { key: string; needsSettings: boolean }>
+  >({});
+  const [historyFor, setHistoryFor] = useState<{ id: string; title: string } | null>(null);
   const [creating, setCreating] = useState(
     Boolean((location.state as { create?: boolean } | null)?.create),
   );
@@ -59,6 +78,34 @@ export default function WorkflowsPage() {
   );
 
   const activeCount = workflows.filter((item) => item.status === "active").length;
+
+  async function handleRun(workflow: WorkflowRecord, title: string) {
+    if (startingId) return;
+    setStartingId(workflow.id);
+    setRunErrors((current) => {
+      const next = { ...current };
+      delete next[workflow.id];
+      return next;
+    });
+    try {
+      await api.runWorkflow(workflow.id, locale);
+      setHistoryFor({ id: workflow.id, title });
+    } catch (err) {
+      setRunErrors((current) => ({ ...current, [workflow.id]: aiErrorInfo(err) }));
+    } finally {
+      setStartingId(null);
+    }
+  }
+
+  const handleRunSettled = useCallback(() => {
+    void refreshActivity();
+    if (historyFor) void reloadWorkflow(historyFor.id);
+  }, [historyFor, refreshActivity, reloadWorkflow]);
+
+  function closeHistory() {
+    handleRunSettled();
+    setHistoryFor(null);
+  }
 
   return (
     <AppShell>
@@ -104,7 +151,9 @@ export default function WorkflowsPage() {
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             </div>
 
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">0</p>
+            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
+              {stats?.workflowRunsWeek ?? 0}
+            </p>
 
             <p className="mt-1 text-sm text-slate-400">
               {t("app.workflows.tasksThisWeek")}
@@ -113,12 +162,14 @@ export default function WorkflowsPage() {
 
           <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
-              <Clock3 className="h-5 w-5 text-violet-400" />
+              <AlertTriangle className="h-5 w-5 text-violet-400" />
             </div>
 
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">—</p>
+            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
+              {stats?.workflowFailuresWeek ?? 0}
+            </p>
 
-            <p className="mt-1 text-sm text-slate-400">{t("app.workflows.timeSaved")}</p>
+            <p className="mt-1 text-sm text-slate-400">{t("app.workflows.failuresThisWeek")}</p>
           </article>
         </div>
 
@@ -146,6 +197,15 @@ export default function WorkflowsPage() {
             )}
             {views.map((item) => {
               const paused = item.workflow.status === "inactive";
+              const runError = runErrors[item.workflow.id];
+              const starting = startingId === item.workflow.id;
+              const lastRun = item.workflow.lastRunAt
+                ? `${relativeTime(item.workflow.lastRunAt, t("app.dashboard.justNow"))}${
+                    item.workflow.lastRunStatus === "failed"
+                      ? ` · ${t("app.workflows.runStatus.failed")}`
+                      : ""
+                  }`
+                : t("app.workflows.neverRun");
 
               return (
                 <article
@@ -188,20 +248,51 @@ export default function WorkflowsPage() {
                           {t("app.workflows.employeeValue", { name: item.employeeName })}
                         </span>
                       )}
-                      <span>{t("app.workflows.lastRun", { value: t("app.workflows.neverRun") })}</span>
+                      <span>{t("app.workflows.lastRun", { value: lastRun })}</span>
+                      {item.workflow.nextRunAt && !paused && (
+                        <span>
+                          {t("app.workflows.nextRun", {
+                            value: formatDateTime(item.workflow.nextRunAt, localeTag),
+                          })}
+                        </span>
+                      )}
                     </div>
+
+                    {runError && (
+                      <p className="mt-2 text-xs text-red-400">
+                        {t(runError.key)}{" "}
+                        {runError.needsSettings && (
+                          <Link to="/settings" className="text-blue-400 hover:text-blue-300">
+                            {t("app.ai.goToSettings")}
+                          </Link>
+                        )}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 self-end sm:self-auto">
                     <button
                       type="button"
-                      aria-label={t("app.workflows.runAria", { title: item.title })}
-                      disabled
-                      title={t("app.workflows.executionComing")}
-                      className="flex h-9 min-w-24 items-center justify-center gap-2 rounded-lg border border-slate-800 px-3 text-xs font-medium text-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label={t("app.workflows.historyAria", { title: item.title })}
+                      title={t("app.workflows.runsTitle")}
+                      onClick={() => setHistoryFor({ id: item.workflow.id, title: item.title })}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800 text-slate-400 transition hover:bg-slate-900 hover:text-slate-200"
                     >
-                      <Play className="h-3.5 w-3.5" />
-                      <span>{t("app.workflows.executionComing")}</span>
+                      <History className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t("app.workflows.runAria", { title: item.title })}
+                      disabled={Boolean(startingId)}
+                      onClick={() => void handleRun(item.workflow, item.title)}
+                      className="flex h-9 min-w-24 items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {starting ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
+                      <span>{t("app.workflows.runNow")}</span>
                     </button>
 
                     <WorkflowActionsMenu
@@ -248,6 +339,14 @@ export default function WorkflowsPage() {
       {creating && <WorkflowFormPanel onClose={() => setCreating(false)} />}
       {editing && (
         <WorkflowFormPanel workflow={editing} onClose={() => setEditing(null)} />
+      )}
+      {historyFor && (
+        <WorkflowRunsPanel
+          workflowId={historyFor.id}
+          title={historyFor.title}
+          onClose={closeHistory}
+          onSettled={handleRunSettled}
+        />
       )}
     </AppShell>
   );

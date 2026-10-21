@@ -4,6 +4,9 @@ import helmet from "helmet";
 import { corsOptions } from "./config/cors.js";
 import { env } from "./config/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { clientKey, rateLimit } from "./middleware/rateLimit.js";
+import accountRoutes from "./routes/account.js";
+import activityRoutes from "./routes/activity.js";
 import authRoutes from "./routes/auth.js";
 import dataRoutes from "./routes/data.js";
 import paymentsRoutes from "./routes/payments.js";
@@ -51,11 +54,14 @@ export function createApp() {
   );
 
   app.use(express.json({ limit: "1mb" }));
+  app.use("/api", rateLimit({ windowMs: 60_000, max: 300, key: clientKey }));
 
   app.use("/api/auth", authRoutes);
   app.use("/api/employees", employeeRoutes);
   app.use("/api/workflows", workflowRoutes);
   app.use("/api/integrations", integrationRoutes);
+  app.use("/api/activity", activityRoutes);
+  app.use("/api/account", accountRoutes);
   app.use("/api", dataRoutes);
   app.use("/api/payments", paymentsRoutes);
   app.use("/api/ai", aiRoutes);

@@ -8,6 +8,8 @@ import AppShell from "../../layouts/AppShell";
 import { userFullName } from "../../lib/userDisplay";
 import AiKeyPanel from "./AiKeyPanel";
 import GoogleIntegrationsPanel from "./GoogleIntegrationsPanel";
+import PlanPanel from "./PlanPanel";
+import PrivacyPanel from "./PrivacyPanel";
 
 const fieldClass =
   "mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:opacity-70";
@@ -143,6 +145,8 @@ export default function SettingsPage() {
 
         <GoogleIntegrationsPanel />
 
+        <PlanPanel />
+
         <AiKeyPanel />
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
@@ -227,6 +231,8 @@ export default function SettingsPage() {
           </button>
           {signOutError && <p className="mt-2 text-sm text-red-400">{signOutError}</p>}
         </section>
+
+        <PrivacyPanel />
       </section>
     </AppShell>
   );

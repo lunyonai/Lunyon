@@ -9,9 +9,12 @@ import {
 } from "react";
 import { api, ApiError } from "../../lib/api";
 import { useAuth } from "../../hooks/useAuth";
-import { normalizeWorkflow, type Workflow, type WorkflowStatus } from "./workflowTypes";
-
-type WorkflowDraft = Omit<Workflow, "id">;
+import {
+  normalizeWorkflow,
+  type Workflow,
+  type WorkflowDraft,
+  type WorkflowStatus,
+} from "./workflowTypes";
 
 type WorkflowsContextValue = {
   workflows: Workflow[];
@@ -20,7 +23,8 @@ type WorkflowsContextValue = {
   persistence: "api";
   refresh: () => Promise<void>;
   addWorkflow: (draft: WorkflowDraft) => Promise<Workflow>;
-  updateWorkflow: (id: string, patch: Partial<Workflow>) => Promise<Workflow>;
+  updateWorkflow: (id: string, patch: Partial<WorkflowDraft>) => Promise<Workflow>;
+  reloadWorkflow: (id: string) => Promise<void>;
   duplicateWorkflow: (id: string, title: string) => Promise<Workflow>;
   setStatus: (id: string, status: WorkflowStatus) => Promise<void>;
   deleteWorkflow: (id: string) => Promise<void>;
@@ -28,11 +32,12 @@ type WorkflowsContextValue = {
 
 const WorkflowsContext = createContext<WorkflowsContextValue | null>(null);
 
-function toPayload(patch: Partial<Workflow>) {
+function toPayload(patch: Partial<WorkflowDraft>) {
   return {
     title: patch.title ?? undefined,
     description: patch.description,
-    trigger: "manual" as const,
+    trigger: patch.trigger,
+    schedule: patch.trigger === "manual" ? null : patch.schedule,
     steps: patch.steps,
     employeeId: patch.employeeId,
     status: patch.status,
@@ -75,7 +80,8 @@ export function WorkflowsProvider({ children }: { children: ReactNode }) {
       await api.createWorkflow({
         title: draft.title?.trim() || "Untitled automation",
         description: draft.description,
-        trigger: "manual",
+        trigger: draft.trigger,
+        schedule: draft.trigger === "schedule" ? draft.schedule : null,
         steps: draft.steps,
         employeeId: draft.employeeId,
         status: draft.status,
@@ -85,10 +91,15 @@ export function WorkflowsProvider({ children }: { children: ReactNode }) {
     return created;
   }, []);
 
-  const updateWorkflow = useCallback(async (id: string, patch: Partial<Workflow>) => {
+  const updateWorkflow = useCallback(async (id: string, patch: Partial<WorkflowDraft>) => {
     const updated = normalizeWorkflow(await api.updateWorkflow(id, toPayload(patch)));
     setWorkflows((current) => current.map((item) => (item.id === id ? updated : item)));
     return updated;
+  }, []);
+
+  const reloadWorkflow = useCallback(async (id: string) => {
+    const updated = normalizeWorkflow(await api.getWorkflow(id));
+    setWorkflows((current) => current.map((item) => (item.id === id ? updated : item)));
   }, []);
 
   const duplicateWorkflow = useCallback(async (id: string, title: string) => {
@@ -118,6 +129,7 @@ export function WorkflowsProvider({ children }: { children: ReactNode }) {
       refresh,
       addWorkflow,
       updateWorkflow,
+      reloadWorkflow,
       duplicateWorkflow,
       setStatus,
       deleteWorkflow,
@@ -129,6 +141,7 @@ export function WorkflowsProvider({ children }: { children: ReactNode }) {
       error,
       loading,
       refresh,
+      reloadWorkflow,
       setStatus,
       updateWorkflow,
       workflows,

@@ -39,6 +39,13 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().optional().default("gemini-2.5-flash"),
   AGENT_FREE_PROVIDER: z.enum(["openai", "gemini"]).default("gemini"),
   AGENT_FREE_DAILY_LIMIT: z.coerce.number().int().min(0).default(20),
+  AGENT_PAID_DAILY_LIMIT: z.coerce.number().int().min(0).default(200),
+  ENTITLEMENT_DAYS: z.coerce.number().int().min(1).default(365),
+
+  WORKFLOW_SCHEDULER_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
 
   SMTP_HOST: z.string().optional().default(""),
   SMTP_PORT: z.coerce.number().default(587),

@@ -72,7 +72,10 @@ function openAiSession(
         completion = await client.chat.completions.create({
           model: config.model,
           messages,
-          tools: tools.map((tool) => ({ type: "function" as const, function: tool })),
+          tools:
+            tools.length > 0
+              ? tools.map((tool) => ({ type: "function" as const, function: tool }))
+              : undefined,
         });
       } catch (err) {
         throw providerError(err instanceof OpenAI.APIError ? err.status : undefined);
@@ -131,7 +134,7 @@ function geminiSession(
             body: JSON.stringify({
               systemInstruction: { parts: [{ text: system }] },
               contents,
-              tools: [{ functionDeclarations: tools }],
+              ...(tools.length > 0 ? { tools: [{ functionDeclarations: tools }] } : {}),
             }),
           },
         );
@@ -180,6 +183,13 @@ export function createModelSession(
   return config.provider === "openai"
     ? openAiSession(config, system, history, tools)
     : geminiSession(config, system, history, tools);
+}
+
+/** Single-turn generation without tools (prompts, employee tasks, workflow steps). */
+export async function generateText(config: ModelConfig, system: string, prompt: string) {
+  const session = createModelSession(config, system, [{ role: "user", content: prompt }], []);
+  const step = await session.next();
+  return step.text.trim();
 }
 
 /** Cheap authenticated call used to check a key before saving it. */

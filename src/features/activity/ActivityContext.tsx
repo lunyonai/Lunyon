@@ -1,73 +1,87 @@
 import {
   createContext,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
+import { useAuth } from "../../hooks/useAuth";
+import { api, type ActivityRecord, type ActivityStats } from "../../lib/api";
+import { userTimezone } from "../../lib/aiErrors";
 
-export type ActivityType = "prompt" | "workflow" | "employee";
-
-export type Activity = {
-  id: string;
-  title: string;
-  detail: string;
-  type: ActivityType;
-  createdAt: Date;
-};
+const POLL_MS = 2 * 60 * 1000;
 
 type ActivityContextValue = {
-  activities: Activity[];
-  addActivity: (activity: Omit<Activity, "id" | "createdAt">) => void;
+  activities: ActivityRecord[];
+  stats: ActivityStats | null;
+  loading: boolean;
+  /** True when the API could not return activity (e.g. migration not applied yet). */
+  unavailable: boolean;
+  refresh: () => Promise<void>;
 };
-
-const initialActivities: Activity[] = [
-  {
-    id: "initial-1",
-    title: "Meeting summary generated",
-    detail: "Weekly strategy meeting",
-    type: "prompt",
-    createdAt: new Date(Date.now() - 8 * 60 * 1000),
-  },
-  {
-    id: "initial-2",
-    title: "Client follow-up email drafted",
-    detail: "For Sarah Johnson",
-    type: "employee",
-    createdAt: new Date(Date.now() - 24 * 60 * 1000),
-  },
-  {
-    id: "initial-3",
-    title: "Content workflow completed",
-    detail: "5 social posts created",
-    type: "workflow",
-    createdAt: new Date(Date.now() - 60 * 60 * 1000),
-  },
-];
 
 const ActivityContext = createContext<ActivityContextValue | null>(null);
 
 export function ActivityProvider({ children }: { children: ReactNode }) {
-  const [activities, setActivities] = useState<Activity[]>(initialActivities);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [activities, setActivities] = useState<ActivityRecord[]>([]);
+  const [stats, setStats] = useState<ActivityStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [unavailable, setUnavailable] = useState(false);
 
-  function addActivity(activity: Omit<Activity, "id" | "createdAt">) {
-    setActivities((currentActivities) => {
-      const nextActivities = [
-        {
-          ...activity,
-          id: crypto.randomUUID(),
-          createdAt: new Date(),
-        },
-        ...currentActivities,
-      ];
+  /** Fetches and applies; every state update happens after the request resolves. */
+  const load = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const [items, nextStats] = await Promise.all([
+        api.activity({ limit: 30 }),
+        api.activityStats(userTimezone()),
+      ]);
+      setActivities(items);
+      setStats(nextStats);
+      setUnavailable(false);
+    } catch {
+      setUnavailable(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
 
-      console.log("ACTIVITIES UPDATED", nextActivities);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    await load();
+  }, [load]);
 
-      return nextActivities;
-    });
-  }
+  useEffect(() => {
+    let cancelled = false;
+    if (userId) {
+      Promise.resolve().then(() => {
+        if (!cancelled) void load();
+      });
+    }
+    // Scheduled workflow runs finish without user action; poll so they reach notifications.
+    const timer = window.setInterval(() => {
+      if (userId && document.visibilityState === "visible") void load();
+    }, POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [load, userId]);
 
-  const value = useMemo(() => ({ activities, addActivity }), [activities]);
+  const value = useMemo(
+    () => ({
+      activities: userId ? activities : [],
+      stats: userId ? stats : null,
+      loading: Boolean(userId) && loading,
+      unavailable,
+      refresh,
+    }),
+    [activities, loading, refresh, stats, unavailable, userId],
+  );
 
   return (
     <ActivityContext.Provider value={value}>

@@ -3,9 +3,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import AppShell from "../../layouts/AppShell";
 import { useLocale } from "../../i18n/LocaleProvider";
-import { useActivity } from "../activity/ActivityContext";
+import { relativeTime } from "../activity/activityView";
 import { useWorkflows } from "../workflows/WorkflowsContext";
-import { api } from "../../lib/api";
+import { api, type ActivityRecord } from "../../lib/api";
 import { useEmployees } from "./EmployeesContext";
 import {
   AVAILABLE_CAPABILITIES,
@@ -25,7 +25,7 @@ export default function EmployeeConfigPage() {
   const { t } = useLocale();
   const { employees, loading, updateEmployee, toggleCapability } = useEmployees();
   const { workflows } = useWorkflows();
-  const { activities } = useActivity();
+  const [employeeActivity, setEmployeeActivity] = useState<ActivityRecord[]>([]);
   const [remote, setRemote] = useState<Employee | null | undefined>(undefined);
 
   useEffect(() => {
@@ -84,14 +84,21 @@ export default function EmployeeConfigPage() {
     return workflows.filter((item) => item.employeeId === employee.id);
   }, [employee, workflows]);
 
-  const employeeActivity = useMemo(() => {
-    if (!copy) return [];
-    return activities.filter(
-      (item) =>
-        item.type === "employee" &&
-        (item.title.includes(copy.name) || item.detail.includes(copy.name)),
-    );
-  }, [activities, copy]);
+  useEffect(() => {
+    if (!employeeId) return;
+    let cancelled = false;
+    api
+      .activity({ type: "employee", ref: employeeId, limit: 20 })
+      .then((items) => {
+        if (!cancelled) setEmployeeActivity(items);
+      })
+      .catch(() => {
+        if (!cancelled) setEmployeeActivity([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [employeeId]);
 
   if (employee === undefined) {
     return (
@@ -334,9 +341,14 @@ export default function EmployeeConfigPage() {
           ) : (
             <ul className="mt-3 space-y-2">
               {employeeActivity.map((item) => (
-                <li key={item.id} className="rounded-xl border border-slate-800 px-3 py-2">
-                  <p className="text-sm text-white">{item.title}</p>
-                  <p className="text-xs text-slate-500">{item.detail}</p>
+                <li
+                  key={item.id}
+                  className="flex items-start justify-between gap-3 rounded-xl border border-slate-800 px-3 py-2"
+                >
+                  <p className="min-w-0 truncate text-sm text-white">{item.detail}</p>
+                  <span className="shrink-0 text-xs text-slate-500">
+                    {relativeTime(item.createdAt, t("app.dashboard.justNow"))}
+                  </span>
                 </li>
               ))}
             </ul>

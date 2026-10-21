@@ -5,6 +5,14 @@ import { useAuth } from "../../../hooks/useAuth";
 import { useEmployees } from "../../employees/EmployeesContext";
 import { useWorkflows } from "../../workflows/WorkflowsContext";
 import { userDisplayName } from "../../../lib/userDisplay";
+import { useActivity } from "../../activity/ActivityContext";
+
+function greetingKey() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "app.dashboard.greetingMorning";
+  if (hour < 18) return "app.dashboard.greeting";
+  return "app.dashboard.greetingEvening";
+}
 
 export default function DashboardHeader() {
   const { t } = useLocale();
@@ -13,6 +21,7 @@ export default function DashboardHeader() {
   const name = userDisplayName(user) || "there";
   const { employees } = useEmployees();
   const { workflows } = useWorkflows();
+  const { stats } = useActivity();
   const activeEmployees = employees.filter((item) => item.status === "active").length;
   const activeWorkflows = workflows.filter((item) => item.status === "active").length;
 
@@ -28,7 +37,7 @@ export default function DashboardHeader() {
           </span>
 
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white">
-            {t("app.dashboard.greeting", { name })}
+            {t(greetingKey(), { name })}
           </h1>
 
           <p className="mt-3 max-w-xl text-slate-400">
@@ -103,7 +112,7 @@ export default function DashboardHeader() {
             <div>
 
               <p className="text-3xl font-semibold text-white">
-                0
+                {stats?.today ?? 0}
               </p>
 
               <p className="text-sm text-slate-400">

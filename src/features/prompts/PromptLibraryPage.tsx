@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
   BookOpen,
-  CheckCircle2,
   Clock3,
   Copy,
   FileText,
@@ -16,11 +15,13 @@ import {
 import AppShell from "../../layouts/AppShell";
 import { useActivity } from "../activity/ActivityContext";
 import { useLocale } from "../../i18n/LocaleProvider";
+import { api } from "../../lib/api";
+import { aiErrorInfo } from "../../lib/aiErrors";
+import RunResultCard, { RunErrorNotice } from "../../components/RunResultCard";
 
 const promptDefs = [
   {
     id: "followUp",
-    uses: "1.2k",
     icon: Mail,
     iconColor: "text-blue-400",
     iconBackground: "bg-blue-500/10",
@@ -28,7 +29,6 @@ const promptDefs = [
   },
   {
     id: "notes",
-    uses: "986",
     icon: MessageSquareText,
     iconColor: "text-violet-400",
     iconBackground: "bg-violet-500/10",
@@ -36,7 +36,6 @@ const promptDefs = [
   },
   {
     id: "weekly",
-    uses: "742",
     icon: Clock3,
     iconColor: "text-emerald-400",
     iconBackground: "bg-emerald-500/10",
@@ -47,13 +46,14 @@ const promptDefs = [
 type PromptId = (typeof promptDefs)[number]["id"];
 
 export default function PromptLibraryPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [search, setSearch] = useState("");
   const [selectedPromptId, setSelectedPromptId] = useState<PromptId | null>(null);
   const [context, setContext] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const { addActivity } = useActivity();
+  const [runError, setRunError] = useState<{ key: string; needsSettings: boolean } | null>(null);
+  const { stats, refresh: refreshActivity } = useActivity();
 
   const prompts = useMemo(
     () =>
@@ -87,28 +87,26 @@ export default function PromptLibraryPage() {
     setSelectedPromptId(null);
     setContext("");
     setResult(null);
+    setRunError(null);
     setIsRunning(false);
   }
 
-  function handleRunPrompt() {
+  async function handleRunPrompt() {
     if (!selectedPrompt || !context.trim() || isRunning) return;
 
     setIsRunning(true);
     setResult(null);
+    setRunError(null);
 
-    window.setTimeout(() => {
-      const promptTitle = selectedPrompt.title;
-
+    try {
+      const run = await api.runPrompt(selectedPrompt.id, context.trim(), locale);
+      setResult(run.output);
+      void refreshActivity();
+    } catch (err) {
+      setRunError(aiErrorInfo(err));
+    } finally {
       setIsRunning(false);
-
-      setResult(t("app.prompts.result", { title: promptTitle }));
-
-      addActivity({
-        title: t("app.prompts.activityTitle", { title: promptTitle }),
-        detail: context.trim().slice(0, 48),
-        type: "prompt",
-      });
-    }, 1400);
+    }
   }
 
   return (
@@ -200,7 +198,9 @@ export default function PromptLibraryPage() {
 
                 <div className="mt-auto flex items-center justify-between border-t border-slate-800 pt-4">
                   <span className="text-xs text-slate-500">
-                    {t("app.prompts.usedTimes", { uses: prompt.uses })}
+                    {t("app.prompts.usedTimes", {
+                      uses: stats?.byRef[`prompt:${prompt.id}`] ?? 0,
+                    })}
                   </span>
 
                   <button
@@ -306,25 +306,18 @@ export default function PromptLibraryPage() {
               </div>
 
               {result && (
-                <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    <p className="text-sm font-medium text-emerald-300">
-                      {t("app.prompts.draftGenerated")}
-                    </p>
-                  </div>
+                <RunResultCard title={t("app.prompts.draftGenerated")} output={result} />
+              )}
 
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    {result}
-                  </p>
-                </div>
+              {runError && (
+                <RunErrorNotice errorKey={runError.key} needsSettings={runError.needsSettings} />
               )}
             </div>
 
            <div className="border-t border-slate-800 p-6">
   <button
     type="button"
-    onClick={handleRunPrompt}
+    onClick={() => void handleRunPrompt()}
     disabled={!context.trim() || isRunning}
     className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
   >

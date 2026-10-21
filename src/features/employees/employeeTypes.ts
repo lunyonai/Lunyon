@@ -19,9 +19,15 @@ export const EMPLOYEE_ICONS = [
 
 export type EmployeeIcon = (typeof EMPLOYEE_ICONS)[number];
 
-export const AVAILABLE_CAPABILITIES = ["run_task", "run_prompt", "run_workflow"] as const;
+export const AVAILABLE_CAPABILITIES = [
+  "run_task",
+  "run_prompt",
+  "run_workflow",
+  "gmail.read",
+  "calendar.read",
+] as const;
 
-export const UPCOMING_CAPABILITIES = ["gmail.read", "calendar.read"] as const;
+export const UPCOMING_CAPABILITIES = [] as const;
 
 export type CapabilityId =
   | (typeof AVAILABLE_CAPABILITIES)[number]

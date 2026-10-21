@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { aiRateLimit } from "../middleware/rateLimit.js";
 import {
   cancelAgentAction,
   confirmAgentAction,
@@ -95,7 +96,7 @@ router.delete("/conversations/:id", async (req, res, next) => {
   }
 });
 
-router.post("/messages", async (req, res, next) => {
+router.post("/messages", aiRateLimit, async (req, res, next) => {
   try {
     const body = messageSchema.parse(req.body);
     res.json(await sendAgentMessage(userId(req), body));

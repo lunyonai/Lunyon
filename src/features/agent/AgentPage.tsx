@@ -336,7 +336,10 @@ export default function AgentPage() {
                     provider: status.ownKey.provider === "openai" ? "OpenAI" : "Gemini",
                   })
                 : status?.freeAvailable
-                  ? t("app.agent.usage", { used: status.usedToday, limit: status.freeDailyLimit })
+                  ? t(status.planActive ? "app.agent.planUsage" : "app.agent.usage", {
+                      used: status.usedToday,
+                      limit: status.dailyLimit,
+                    })
                   : ""}
             </p>
           </div>

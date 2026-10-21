@@ -10,20 +10,24 @@ import {
 import AppShell from "../../layouts/AppShell";
 import { useActivity } from "../activity/ActivityContext";
 import { useLocale } from "../../i18n/LocaleProvider";
+import { api } from "../../lib/api";
+import { aiErrorInfo } from "../../lib/aiErrors";
+import RunResultCard, { RunErrorNotice } from "../../components/RunResultCard";
 import { useEmployees } from "./EmployeesContext";
 import EmployeeActionsMenu from "./EmployeeActionsMenu";
 import EmployeeFormPanel from "./EmployeeFormPanel";
 import { employeeIconMap, resolveEmployeeCopy, statusClass } from "./employeeView";
 
 export default function EmployeesPage() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const { employees, loading, error } = useEmployees();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [task, setTask] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-  const { addActivity, activities } = useActivity();
+  const [runError, setRunError] = useState<{ key: string; needsSettings: boolean } | null>(null);
+  const { stats, refresh: refreshActivity } = useActivity();
 
   const views = useMemo(
     () =>
@@ -43,9 +47,9 @@ export default function EmployeesPage() {
               : "app.employees.statusPaused",
           ),
           statusClass: statusClass(employee.status),
-          completed: kindKey
-            ? t(`app.employees.${kindKey}Completed`)
-            : t("app.employees.customCompleted"),
+          completed: t("app.employees.tasksDone", {
+            count: stats?.byRef[`employee:${employee.id}`] ?? 0,
+          }),
           taskLabel: kindKey
             ? t(`app.employees.${kindKey}TaskLabel`)
             : t("app.employees.runTask"),
@@ -54,7 +58,7 @@ export default function EmployeesPage() {
             : t("app.employees.customPlaceholder"),
         };
       }),
-    [employees, t],
+    [employees, stats, t],
   );
 
   const selectedEmployee =
@@ -62,13 +66,14 @@ export default function EmployeesPage() {
 
   const activeCount = employees.filter((item) => item.status === "active").length;
   const roleCount = new Set(views.map((item) => item.role)).size;
-  const taskCount = activities.filter((item) => item.type === "employee").length;
+  const taskCount = stats?.totals.employee ?? 0;
   const workingCount = employees.filter((item) => item.status === "active").length;
 
   function closePanel() {
     setSelectedEmployeeId(null);
     setTask("");
     setResult(null);
+    setRunError(null);
     setIsRunning(false);
   }
 
@@ -76,29 +81,26 @@ export default function EmployeesPage() {
     setSelectedEmployeeId(id);
     setTask("");
     setResult(null);
+    setRunError(null);
     setIsRunning(false);
   }
 
-  function handleRunTask() {
+  async function handleRunTask() {
     if (!selectedEmployee || !task.trim() || isRunning) return;
-
-    const submittedTask = task.trim();
-    const employeeName = selectedEmployee.name;
 
     setIsRunning(true);
     setResult(null);
+    setRunError(null);
 
-    window.setTimeout(() => {
+    try {
+      const run = await api.runEmployee(selectedEmployee.employee.id, task.trim(), locale);
+      setResult(run.output);
+      void refreshActivity();
+    } catch (err) {
+      setRunError(aiErrorInfo(err));
+    } finally {
       setIsRunning(false);
-
-      setResult(t("app.employees.result", { name: employeeName }));
-
-      addActivity({
-        title: t("app.employees.activityTitle", { name: employeeName }),
-        detail: submittedTask.slice(0, 48),
-        type: "employee",
-      });
-    }, 1400);
+    }
   }
 
   return (
@@ -336,25 +338,18 @@ export default function EmployeesPage() {
               </div>
 
               {result && (
-                <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                    <p className="text-sm font-medium text-emerald-300">
-                      {t("app.employees.taskCompleted")}
-                    </p>
-                  </div>
+                <RunResultCard title={t("app.employees.taskCompleted")} output={result} />
+              )}
 
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    {result}
-                  </p>
-                </div>
+              {runError && (
+                <RunErrorNotice errorKey={runError.key} needsSettings={runError.needsSettings} />
               )}
             </div>
 
             <div className="border-t border-slate-800 p-6">
               <button
                 type="button"
-                onClick={handleRunTask}
+                onClick={() => void handleRunTask()}
                 disabled={!task.trim() || isRunning || selectedEmployee.employee.status === "paused"}
                 className="flex h-11 w-full items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
               >

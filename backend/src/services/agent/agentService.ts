@@ -1,24 +1,21 @@
-import { env } from "../../config/env.js";
 import { decryptSecret, encryptSecret } from "../../lib/tokenCrypto.js";
 import { supabaseAdmin } from "../../lib/supabase.js";
 import { AppError } from "../../middleware/errorHandler.js";
+import { getAiAccessStatus, reserveAiUsage } from "../ai/access.js";
+import { LANGUAGE_NAMES, type AiLocale } from "../ai/prompts.js";
 import { commitCalendarWrite } from "../calendarWrite.js";
 import {
   createModelSession,
   verifyProviderKey,
   type AgentProvider,
   type HistoryTurn,
-  type ModelConfig,
 } from "./models.js";
 import { AGENT_TOOLS, executeTool, type AgentActionKind, type ToolContext } from "./tools.js";
 
 const MAX_TOOL_ROUNDS = 6;
 const HISTORY_LIMIT = 20;
-/** Abuse guard for users on their own key; the free tier uses AGENT_FREE_DAILY_LIMIT. */
-const OWN_KEY_DAILY_LIMIT = 500;
 
-const LANGUAGE_NAMES = { en: "English", pt: "Brazilian Portuguese", es: "Spanish" } as const;
-export type AgentLocale = keyof typeof LANGUAGE_NAMES;
+export type AgentLocale = AiLocale;
 
 export type AgentActionPublic = {
   id: string;
@@ -56,10 +53,6 @@ function dbUnavailable(error: { message: string }): never {
   throw new AppError("Could not complete this request", 400);
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function toPublicAction(row: ActionRow): AgentActionPublic {
   const expired = row.status === "pending" && new Date(row.expires_at).getTime() < Date.now();
   return {
@@ -76,54 +69,8 @@ function toPublicAction(row: ActionRow): AgentActionPublic {
 // Keys and quota
 // ---------------------------------------------------------------------------
 
-async function loadUserKey(userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("user_ai_keys")
-    .select("provider, encrypted_key, key_hint, updated_at")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (error) dbUnavailable(error);
-  return data as
-    | { provider: AgentProvider; encrypted_key: string; key_hint: string; updated_at: string }
-    | null;
-}
-
-function modelFor(provider: AgentProvider) {
-  return provider === "openai" ? env.OPENAI_MODEL : env.GEMINI_MODEL;
-}
-
-function freeConfig(): ModelConfig | null {
-  const provider = env.AGENT_FREE_PROVIDER;
-  const apiKey = provider === "openai" ? env.OPENAI_API_KEY : env.GEMINI_API_KEY;
-  if (!apiKey || env.AGENT_FREE_DAILY_LIMIT === 0) return null;
-  return { provider, apiKey, model: modelFor(provider) };
-}
-
-async function usedToday(userId: string) {
-  const { data, error } = await supabaseAdmin
-    .from("agent_usage")
-    .select("messages")
-    .eq("user_id", userId)
-    .eq("day", today())
-    .maybeSingle();
-  if (error) dbUnavailable(error);
-  return (data?.messages as number | undefined) ?? 0;
-}
-
-async function recordUsage(userId: string, previous: number) {
-  await supabaseAdmin
-    .from("agent_usage")
-    .upsert({ user_id: userId, day: today(), messages: previous + 1 }, { onConflict: "user_id,day" });
-}
-
 export async function getAgentStatus(userId: string) {
-  const [key, used] = await Promise.all([loadUserKey(userId), usedToday(userId)]);
-  return {
-    ownKey: key ? { provider: key.provider, hint: key.key_hint, updatedAt: key.updated_at } : null,
-    freeAvailable: freeConfig() !== null,
-    freeDailyLimit: env.AGENT_FREE_DAILY_LIMIT,
-    usedToday: used,
-  };
+  return getAiAccessStatus(userId);
 }
 
 export async function saveUserAiKey(userId: string, provider: AgentProvider, apiKey: string) {
@@ -147,31 +94,6 @@ export async function deleteUserAiKey(userId: string) {
   const { error } = await supabaseAdmin.from("user_ai_keys").delete().eq("user_id", userId);
   if (error) dbUnavailable(error);
   return getAgentStatus(userId);
-}
-
-async function resolveModel(userId: string) {
-  const [key, used] = await Promise.all([loadUserKey(userId), usedToday(userId)]);
-  if (key) {
-    if (used >= OWN_KEY_DAILY_LIMIT) {
-      throw new AppError("Daily assistant limit reached", 429, "AGENT_QUOTA");
-    }
-    return {
-      used,
-      config: {
-        provider: key.provider,
-        apiKey: decryptSecret(key.encrypted_key),
-        model: modelFor(key.provider),
-      },
-    };
-  }
-  const config = freeConfig();
-  if (!config) {
-    throw new AppError("Add your own AI key in Settings to use the assistant", 503, "AGENT_NO_KEY");
-  }
-  if (used >= env.AGENT_FREE_DAILY_LIMIT) {
-    throw new AppError("Daily free assistant limit reached", 429, "AGENT_QUOTA");
-  }
-  return { used, config };
 }
 
 // ---------------------------------------------------------------------------
@@ -313,37 +235,46 @@ export async function sendAgentMessage(
   input: { conversationId?: string; message: string; timezone: string; locale: AgentLocale },
 ) {
   const timezone = isValidTimezone(input.timezone) ? input.timezone : "UTC";
-  const { used, config } = await resolveModel(userId);
-
-  let conversationId = input.conversationId;
-  if (conversationId) {
-    await assertOwnedConversation(userId, conversationId);
-  } else {
-    const created = await supabaseAdmin
-      .from("agent_conversations")
-      .insert({ user_id: userId, title: input.message.slice(0, 60) })
-      .select("id")
-      .single();
-    if (created.error) dbUnavailable(created.error);
-    conversationId = created.data.id as string;
-  }
-
-  const history = await loadHistory(userId, conversationId);
-  history.push({ role: "user", content: input.message });
+  if (input.conversationId) await assertOwnedConversation(userId, input.conversationId);
+  const usage = await reserveAiUsage(userId);
 
   const ctx: ToolContext = { userId, timezone, proposals: [] };
-  const session = createModelSession(config, systemPrompt(timezone, input.locale), history, AGENT_TOOLS);
-
+  let conversationId = input.conversationId;
   let reply = "";
-  for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
-    const step = await session.next();
-    reply = step.text;
-    if (step.toolCalls.length === 0 || round === MAX_TOOL_ROUNDS) break;
-    const results = [];
-    for (const call of step.toolCalls) {
-      results.push({ call, output: await executeTool(ctx, call) });
+  try {
+    if (!conversationId) {
+      const created = await supabaseAdmin
+        .from("agent_conversations")
+        .insert({ user_id: userId, title: input.message.slice(0, 60) })
+        .select("id")
+        .single();
+      if (created.error) dbUnavailable(created.error);
+      conversationId = created.data.id as string;
     }
-    session.addToolResults(results);
+
+    const history = await loadHistory(userId, conversationId);
+    history.push({ role: "user", content: input.message });
+
+    const session = createModelSession(
+      usage.config,
+      systemPrompt(timezone, input.locale),
+      history,
+      AGENT_TOOLS,
+    );
+
+    for (let round = 0; round <= MAX_TOOL_ROUNDS; round += 1) {
+      const step = await session.next();
+      reply = step.text;
+      if (step.toolCalls.length === 0 || round === MAX_TOOL_ROUNDS) break;
+      const results = [];
+      for (const call of step.toolCalls) {
+        results.push({ call, output: await executeTool(ctx, call) });
+      }
+      session.addToolResults(results);
+    }
+  } catch (err) {
+    await usage.release();
+    throw err;
   }
   if (!reply.trim()) {
     reply = ctx.proposals.length > 0 ? "Review the change below and confirm it." : "Sorry, I could not answer that.";
@@ -383,14 +314,11 @@ export async function sendAgentMessage(
     actions = ((inserted.data ?? []) as ActionRow[]).map(toPublicAction);
   }
 
-  await Promise.all([
-    supabaseAdmin
-      .from("agent_conversations")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", conversationId)
-      .eq("user_id", userId),
-    recordUsage(userId, used),
-  ]);
+  await supabaseAdmin
+    .from("agent_conversations")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", conversationId)
+    .eq("user_id", userId);
 
   return {
     conversationId,

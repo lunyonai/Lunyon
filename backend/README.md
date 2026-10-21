@@ -1,6 +1,6 @@
 # Lunyon API (Node + TypeScript)
 
-Backend do Lunyon: auth JWT (Supabase), PostgreSQL, Stripe, PayPal, IA e e-mail.
+Backend do Lunyon: auth (Supabase), PostgreSQL, Stripe, IA (OpenAI/Gemini), Google Agenda/Gmail e motor de workflows.
 
 ## Stack
 
@@ -26,32 +26,51 @@ Health: `GET /health`
 
 ## Banco de dados
 
-No Supabase → SQL Editor, rode:
+Aplique as migrações no SQL Editor do Supabase na ordem descrita em [sql/README.md](sql/README.md).
 
-`sql/schema.sql`
+## Testes
 
-Isso cria: `profiles`, `purchases`, `prompts`, `templates`, `course_progress`, `settings`.
+```bash
+npm test        # node:test + tsx, sem acessar o Supabase
+npm run typecheck
+```
 
 ## Endpoints principais
 
-| Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
-| POST | `/api/auth/register` | Não | Cadastro |
-| POST | `/api/auth/login` | Não | Login (retorna JWT) |
-| GET | `/api/auth/me` | Sim | Perfil |
-| GET | `/api/prompts` | Sim | Lista prompts |
-| POST | `/api/prompts` | Sim | Cria prompt |
-| GET | `/api/templates` | Sim | Templates |
-| GET/PUT | `/api/course-progress` | Sim | Progresso do curso |
-| GET/PUT | `/api/settings` | Sim | Configurações |
-| POST | `/api/payments/stripe/checkout` | Sim | Checkout Stripe |
-| POST | `/api/payments/stripe/webhook` | Stripe | Webhook |
-| POST | `/api/payments/paypal/create-order` | Sim | Ordem PayPal |
-| POST | `/api/payments/paypal/capture` | Sim | Captura PayPal |
-| POST | `/api/ai/generate` | Sim | Chamada IA |
-| POST | `/api/ai/email` | Sim | Envio de e-mail |
+Header de auth: `Authorization: Bearer <access_token>` (sessão Supabase).
 
-Header de auth: `Authorization: Bearer <access_token>`
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/api/me`, `/api/entitlement` | Perfil e plano |
+| GET/PUT | `/api/settings` | Preferências |
+| POST | `/api/ai/prompts/:promptId/run` | Executa um prompt da biblioteca (`followUp`, `notes`, `weekly`) |
+| CRUD | `/api/employees` | Funcionários de IA |
+| POST | `/api/employees/:id/run` | Executa uma tarefa com o funcionário |
+| CRUD | `/api/workflows` | Automações (gatilho `manual` ou `schedule`) |
+| POST | `/api/workflows/:id/run` | Inicia uma execução (202; roda em segundo plano) |
+| GET | `/api/workflows/:id/runs[/:runId]` | Histórico e progresso das execuções |
+| GET | `/api/activity`, `/api/activity/stats?tz=` | Histórico de atividade e estatísticas |
+| * | `/api/agent/*` | Assistente (conversas, chave de IA, confirmações) |
+| * | `/api/integrations/*` | Google Agenda e Gmail |
+| POST | `/api/payments/stripe/checkout` | Checkout Stripe (acesso anual) |
+| POST | `/api/payments/stripe/webhook` | Webhook Stripe (libera/remove acesso) |
+| GET | `/api/account/export` | Exporta os dados do usuário (LGPD) |
+| DELETE | `/api/account` | Exclui a conta (body `{ "confirmEmail": "..." }`) |
+
+### Limites
+
+- IA: cada execução (mensagem do assistente, prompt, tarefa ou etapa de IA de workflow) consome 1 unidade da cota diária. Grátis: `AGENT_FREE_DAILY_LIMIT`; com plano ativo: `AGENT_PAID_DAILY_LIMIT`; com chave própria: 500.
+- Rate limit em memória: 300 req/min por sessão/IP na API e 20 req/min por usuário nas rotas que chamam IA.
+
+### Stripe
+
+Configure o webhook no painel do Stripe apontando para `/api/payments/stripe/webhook` com os eventos:
+`checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`.
+Cada compra concluída soma `ENTITLEMENT_DAYS` (padrão 365) ao acesso; um reembolso total remove esses dias.
+
+### Agendador
+
+Com `WORKFLOW_SCHEDULER_ENABLED=true`, a API verifica a cada minuto os workflows agendados e roda a manutenção a cada hora: marca execuções travadas como falhas, expira confirmações pendentes e aplica a retenção de dados (conversas do assistente: 180 dias; execuções: 90; atividade: 365). Em planos que "dormem" por inatividade (ex.: Render free), os agendamentos só rodam com a instância acordada.
 
 ## Deploy (Render / Railway)
 

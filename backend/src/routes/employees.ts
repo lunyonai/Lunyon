@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/auth.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { aiRateLimit } from "../middleware/rateLimit.js";
+import { runEmployeeTask } from "../services/runService.js";
 import {
   createEmployee,
   deleteEmployee,
@@ -131,6 +133,28 @@ router.post("/:id/duplicate", async (req, res, next) => {
       .parse(req.body ?? {});
     const data = await duplicateEmployee(req.user.id, id, body.name);
     res.status(201).json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/:id/run", aiRateLimit, async (req, res, next) => {
+  try {
+    if (!req.user) throw new AppError("Unauthorized", 401);
+    const id = paramId(req.params.id);
+    const body = z
+      .object({
+        task: z.string().trim().min(1).max(8000),
+        locale: z.enum(["en", "pt", "es"]).default("en"),
+      })
+      .strict()
+      .parse(req.body ?? {});
+    const result = await runEmployeeTask(req.user.id, {
+      employeeId: id,
+      task: body.task,
+      locale: body.locale,
+    });
+    res.json({ output: result.output, durationMs: result.durationMs, activity: result.activity });
   } catch (err) {
     next(err);
   }
