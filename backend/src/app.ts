@@ -8,6 +8,7 @@ import authRoutes from "./routes/auth.js";
 import dataRoutes from "./routes/data.js";
 import paymentsRoutes from "./routes/payments.js";
 import aiRoutes from "./routes/ai.js";
+import agentRoutes from "./routes/agent.js";
 import employeeRoutes from "./routes/employees.js";
 import workflowRoutes from "./routes/workflows.js";
 import integrationRoutes from "./routes/integrations.js";
@@ -58,6 +59,7 @@ export function createApp() {
   app.use("/api", dataRoutes);
   app.use("/api/payments", paymentsRoutes);
   app.use("/api/ai", aiRoutes);
+  app.use("/api/agent", agentRoutes);
 
   app.use(errorHandler);
 

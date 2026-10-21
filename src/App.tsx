@@ -15,6 +15,7 @@ import { NotificationsProvider } from "./features/notifications/NotificationsCon
 import SettingsPage from "./features/settings/SettingsPage";
 import CalendarPage from "./features/calendar/CalendarPage";
 import MailPage from "./features/mail/MailPage";
+import AgentPage from "./features/agent/AgentPage";
 import LandingPage from "./features/landing/LandingPage";
 import { LocaleProvider } from "./i18n/LocaleProvider";
 import { unknownPathFallback } from "./i18n/paths";
@@ -96,6 +97,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/assistant"
+        element={
+          <ProtectedRoute>
+            <AgentPage />
           </ProtectedRoute>
         }
       />

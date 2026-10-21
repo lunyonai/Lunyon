@@ -6,6 +6,7 @@ import {
   LibraryBig,
   PanelLeft,
   Settings,
+  Sparkles,
   Workflow,
   X,
 } from "lucide-react";
@@ -23,6 +24,7 @@ type AppShellProps = {
 
 const navigation = [
   { key: "overview", icon: House, to: "/dashboard" },
+  { key: "assistant", icon: Sparkles, to: "/assistant" },
   { key: "employees", icon: Bot, to: "/employees" },
   { key: "prompts", icon: LibraryBig, to: "/prompts" },
   { key: "workflows", icon: Workflow, to: "/workflows" },
@@ -62,6 +64,12 @@ function headerCopy(
     return {
       title: t("app.nav.calendar"),
       subtitle: t("app.calendar.subtitle"),
+    };
+  }
+  if (pathname === "/assistant") {
+    return {
+      title: t("app.nav.assistant"),
+      subtitle: t("app.agent.subtitle"),
     };
   }
   if (pathname === "/mail") {

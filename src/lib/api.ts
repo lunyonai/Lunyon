@@ -270,6 +270,53 @@ export type WorkflowRecord = {
   updatedAt?: string;
 };
 
+export type AgentProvider = "openai" | "gemini";
+
+export type AgentStatus = {
+  ownKey: { provider: AgentProvider; hint: string; updatedAt: string } | null;
+  freeAvailable: boolean;
+  freeDailyLimit: number;
+  usedToday: number;
+};
+
+export type AgentAction = {
+  id: string;
+  kind: "calendar.create" | "calendar.update" | "calendar.delete";
+  status: "pending" | "confirmed" | "canceled" | "expired" | "failed";
+  summary: {
+    calendarName?: string;
+    title?: string;
+    start?: string;
+    end?: string;
+    timezone?: string;
+    attendees?: string[];
+    addMeet?: boolean;
+    conflicts?: Array<{ id: string; title: string; start: string; end: string }>;
+  };
+  result: { htmlLink?: string | null; error?: string } | null;
+  expiresAt: string;
+};
+
+export type AgentMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  createdAt: string;
+  actions: AgentAction[];
+};
+
+export type AgentConversation = {
+  id: string;
+  title: string;
+  updatedAt: string;
+};
+
+export type AgentSendResult = {
+  conversationId: string;
+  userMessage: AgentMessage;
+  message: AgentMessage;
+};
+
 type RequestOptions = {
   method?: string;
   body?: unknown;
@@ -573,5 +620,51 @@ export const api = {
 
   deleteWorkflow(id: string) {
     return apiRequest<unknown>(`/api/workflows/${id}`, { method: "DELETE" });
+  },
+
+  agentStatus() {
+    return apiRequest<AgentStatus>("/api/agent/status");
+  },
+
+  saveAgentKey(provider: AgentProvider, apiKey: string) {
+    return apiRequest<AgentStatus>("/api/agent/key", {
+      method: "PUT",
+      body: { provider, apiKey },
+    });
+  },
+
+  deleteAgentKey() {
+    return apiRequest<AgentStatus>("/api/agent/key", { method: "DELETE" });
+  },
+
+  listAgentConversations() {
+    return apiRequest<AgentConversation[]>("/api/agent/conversations");
+  },
+
+  agentMessages(conversationId: string) {
+    return apiRequest<AgentMessage[]>(`/api/agent/conversations/${conversationId}/messages`);
+  },
+
+  deleteAgentConversation(conversationId: string) {
+    return apiRequest<unknown>(`/api/agent/conversations/${conversationId}`, {
+      method: "DELETE",
+    });
+  },
+
+  sendAgentMessage(body: {
+    conversationId?: string;
+    message: string;
+    timezone: string;
+    locale: "en" | "pt" | "es";
+  }) {
+    return apiRequest<AgentSendResult>("/api/agent/messages", { method: "POST", body });
+  },
+
+  confirmAgentAction(actionId: string) {
+    return apiRequest<AgentAction>(`/api/agent/actions/${actionId}/confirm`, { method: "POST" });
+  },
+
+  cancelAgentAction(actionId: string) {
+    return apiRequest<AgentAction>(`/api/agent/actions/${actionId}/cancel`, { method: "POST" });
   },
 };

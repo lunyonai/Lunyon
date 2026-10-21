@@ -35,6 +35,10 @@ const envSchema = z.object({
   DEFAULT_AI_PROVIDER: z
     .enum(["openai", "anthropic", "gemini"])
     .default("openai"),
+  OPENAI_MODEL: z.string().optional().default("gpt-4o-mini"),
+  GEMINI_MODEL: z.string().optional().default("gemini-2.5-flash"),
+  AGENT_FREE_PROVIDER: z.enum(["openai", "gemini"]).default("gemini"),
+  AGENT_FREE_DAILY_LIMIT: z.coerce.number().int().min(0).default(20),
 
   SMTP_HOST: z.string().optional().default(""),
   SMTP_PORT: z.coerce.number().default(587),
