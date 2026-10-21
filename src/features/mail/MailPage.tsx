@@ -18,6 +18,28 @@ const FOLDERS: Array<{ id: GmailFolder; icon: typeof Inbox; labelKey: string }> 
   { id: "all", icon: Mail, labelKey: "app.mail.folderAll" },
 ];
 
+const THREAD_CACHE_TTL_MS = 2 * 60_000;
+const PREFETCH_DELAY_MS = 150;
+
+type CachedList = { messages: GmailMessageSummary[]; nextPage: string | null };
+type CachedThread = { messages: GmailMessageDetail[]; fetchedAt: number };
+
+function listKey(folder: GmailFolder, search: string) {
+  return `${folder}|${search.trim()}`;
+}
+
+function threadKey(item: GmailMessageSummary) {
+  return item.threadId ? `thread:${item.threadId}` : `message:${item.id}`;
+}
+
+function cachedThread(messages: GmailMessageDetail[]): CachedThread {
+  return { messages, fetchedAt: Date.now() };
+}
+
+function isFresh(entry: CachedThread | undefined): entry is CachedThread {
+  return Boolean(entry && Date.now() - entry.fetchedAt < THREAD_CACHE_TTL_MS);
+}
+
 function formatMailDate(value: string | null, locale: string) {
   if (!value) return "";
   const date = new Date(value);
@@ -63,10 +85,21 @@ export default function MailPage() {
   const [thread, setThread] = useState<GmailMessageDetail[] | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const requestSeq = useRef(0);
+  const detailSeq = useRef(0);
   const folderRef = useRef(folder);
   folderRef.current = folder;
+  // Per-visit caches: lists render instantly on revisit and refresh in the background;
+  // threads are reused for a short TTL and shared with hover prefetches.
+  const listCache = useRef(new Map<string, CachedList>());
+  const threadCache = useRef(new Map<string, CachedThread>());
+  const threadInflight = useRef(new Map<string, Promise<GmailMessageDetail[]>>());
+  const prefetchTimer = useRef<number | null>(null);
 
   const focused = thread?.find((item) => item.id === selectedId) ?? thread?.[0] ?? null;
+
+  useEffect(() => () => {
+    if (prefetchTimer.current !== null) window.clearTimeout(prefetchTimer.current);
+  }, []);
 
   async function fetchPage(target: GmailFolder, search: string, pageToken?: string) {
     const options = { pageToken, limit: 20, folder: target };
@@ -75,47 +108,81 @@ export default function MailPage() {
       : api.gmailInbox(options);
   }
 
-  async function loadFolder(target: GmailFolder, search: string, seq: number) {
-    const page = await fetchPage(target, search);
-    if (seq !== requestSeq.current) return;
+  function applyPage(target: GmailFolder, search: string, page: Awaited<ReturnType<typeof fetchPage>>) {
     if (page.folder !== target) return;
+    listCache.current.set(listKey(target, search), {
+      messages: page.messages,
+      nextPage: page.nextPageToken,
+    });
     setMessages(page.messages);
     setNextPage(page.nextPageToken);
   }
 
-  async function bootstrap(target = folderRef.current, search = activeQuery) {
-    const seq = ++requestSeq.current;
-    setLoading(true);
-    setError("");
-    setNeedsConnect(false);
-    setMessages([]);
-    setNextPage(null);
+  /** Shows the cached list (if any) right away; returns true when it did. */
+  function showCachedList(target: GmailFolder, search: string) {
+    const cached = listCache.current.get(listKey(target, search));
+    setMessages(cached?.messages ?? []);
+    setNextPage(cached?.nextPage ?? null);
+    setLoading(!cached);
+    return Boolean(cached);
+  }
+
+  /** Clears the open message and discards any detail request still in flight. */
+  function clearSelection() {
+    detailSeq.current += 1;
     setSelectedId(null);
     setThread(null);
+    setDetailLoading(false);
+  }
+
+  async function loadFolder(target: GmailFolder, search: string, seq: number) {
+    const page = await fetchPage(target, search);
+    if (seq !== requestSeq.current) return;
+    applyPage(target, search, page);
+  }
+
+  async function bootstrap(target = folderRef.current, search = activeQuery) {
+    const seq = ++requestSeq.current;
+    setError("");
+    setNeedsConnect(false);
+    clearSelection();
+    const hadCache = showCachedList(target, search);
     try {
-      const status = await api.gmailStatus();
+      // Status and the first page are independent; the list endpoint answers 409 when
+      // Gmail is not connected, so its result is only used once status says we can read.
+      const [statusResult, pageResult] = await Promise.allSettled([
+        api.gmailStatus(),
+        fetchPage(target, search),
+      ]);
       if (seq !== requestSeq.current) return;
+      if (statusResult.status === "rejected") throw statusResult.reason;
+      const status = statusResult.value;
       setConnected(status.connected);
       setCanRead(status.canRead);
       setCanSend(Boolean(status.canSend));
       setSender(status.email);
       if (!status.connected || !status.canRead) {
+        setMessages([]);
         setNeedsConnect(true);
         return;
       }
-      await loadFolder(target, search, seq);
+      if (pageResult.status === "rejected") throw pageResult.reason;
+      applyPage(target, search, pageResult.value);
     } catch (err) {
       if (seq !== requestSeq.current) return;
-      setMessages([]);
       if (err instanceof ApiError && (err.status === 409 || err.code === "GMAIL_NOT_CONNECTED")) {
+        setMessages([]);
         setNeedsConnect(true);
       } else if (err instanceof ApiError && (err.status === 401 || err.code === "GMAIL_READ_SCOPE")) {
+        setMessages([]);
         setNeedsConnect(true);
         setError(t("app.mail.reconnectHint"));
-      } else if (err instanceof ApiError && err.status === 429) {
-        setError(t("app.mail.rateLimited"));
       } else {
-        setError(t("app.mail.loadError"));
+        // Keep a cached list on screen when only the background refresh failed.
+        if (!hadCache) setMessages([]);
+        setError(
+          err instanceof ApiError && err.status === 429 ? t("app.mail.rateLimited") : t("app.mail.loadError"),
+        );
       }
     } finally {
       if (seq === requestSeq.current) setLoading(false);
@@ -130,16 +197,14 @@ export default function MailPage() {
     if (next === folder && !loading) return;
     setFolder(next);
     const seq = ++requestSeq.current;
-    setLoading(true);
     setError("");
-    setMessages([]);
-    setNextPage(null);
-    setSelectedId(null);
-    setThread(null);
+    clearSelection();
+    const hadCache = showCachedList(next, activeQuery);
     try {
       await loadFolder(next, activeQuery, seq);
     } catch (err) {
       if (seq !== requestSeq.current) return;
+      if (!hadCache) setMessages([]);
       if (err instanceof ApiError && err.status === 429) setError(t("app.mail.rateLimited"));
       else setError(t("app.mail.loadError"));
     } finally {
@@ -152,16 +217,15 @@ export default function MailPage() {
     const search = query.trim();
     setActiveQuery(search);
     const seq = ++requestSeq.current;
-    setLoading(true);
     setError("");
-    setMessages([]);
-    setNextPage(null);
-    setSelectedId(null);
-    setThread(null);
+    clearSelection();
+    const hadCache = showCachedList(folder, search);
     try {
       await loadFolder(folder, search, seq);
     } catch {
-      if (seq === requestSeq.current) setError(t("app.mail.loadError"));
+      if (seq !== requestSeq.current) return;
+      if (!hadCache) setMessages([]);
+      setError(t("app.mail.loadError"));
     } finally {
       if (seq === requestSeq.current) setLoading(false);
     }
@@ -169,14 +233,21 @@ export default function MailPage() {
 
   async function handleMore() {
     if (!nextPage || loadingMore) return;
-    const seq = requestSeq.current;
+    // Bumping the sequence also drops any background refresh of the first page, which
+    // would otherwise replace the list and throw away the page appended here.
+    const seq = ++requestSeq.current;
     const token = nextPage;
     const target = folder;
+    const search = activeQuery;
+    const base = messages;
     setLoadingMore(true);
     try {
-      const page = await fetchPage(target, activeQuery, token);
+      const page = await fetchPage(target, search, token);
       if (seq !== requestSeq.current || page.folder !== target) return;
-      setMessages((current) => [...current, ...page.messages]);
+      const seen = new Set(base.map((item) => item.id));
+      const merged = [...base, ...page.messages.filter((item) => !seen.has(item.id))];
+      listCache.current.set(listKey(target, search), { messages: merged, nextPage: page.nextPageToken });
+      setMessages(merged);
       setNextPage(page.nextPageToken);
     } catch {
       setError(t("app.mail.loadError"));
@@ -185,28 +256,65 @@ export default function MailPage() {
     }
   }
 
+  async function fetchThread(item: GmailMessageSummary): Promise<GmailMessageDetail[]> {
+    if (item.threadId) {
+      try {
+        return (await api.gmailThread(item.threadId)).messages;
+      } catch {
+        // Fall back to the single message below.
+      }
+    }
+    return [await api.gmailMessage(item.id)];
+  }
+
+  /** Cached, de-duplicated thread load shared by clicks and hover prefetches. */
+  function loadThread(item: GmailMessageSummary): Promise<GmailMessageDetail[]> {
+    const key = threadKey(item);
+    const cached = threadCache.current.get(key);
+    if (isFresh(cached)) {
+      return Promise.resolve(cached.messages);
+    }
+    const inflight = threadInflight.current.get(key);
+    if (inflight) return inflight;
+    const request = fetchThread(item)
+      .then((result) => {
+        threadCache.current.set(key, cachedThread(result));
+        return result;
+      })
+      .finally(() => threadInflight.current.delete(key));
+    threadInflight.current.set(key, request);
+    return request;
+  }
+
+  function schedulePrefetch(item: GmailMessageSummary) {
+    cancelPrefetch();
+    prefetchTimer.current = window.setTimeout(() => {
+      prefetchTimer.current = null;
+      loadThread(item).catch(() => undefined);
+    }, PREFETCH_DELAY_MS);
+  }
+
+  function cancelPrefetch() {
+    if (prefetchTimer.current === null) return;
+    window.clearTimeout(prefetchTimer.current);
+    prefetchTimer.current = null;
+  }
+
   async function openMessage(item: GmailMessageSummary) {
+    cancelPrefetch();
+    const seq = ++detailSeq.current;
     setSelectedId(item.id);
     setDetailLoading(true);
     setThread(null);
     try {
-      if (item.threadId) {
-        const next = await api.gmailThread(item.threadId);
-        setThread(next.messages);
-        setSelectedId(item.id);
-      } else {
-        const next = await api.gmailMessage(item.id);
-        setThread([next]);
-      }
+      const next = await loadThread(item);
+      if (seq !== detailSeq.current) return;
+      setThread(next);
+      setSelectedId(item.id);
     } catch {
-      try {
-        const next = await api.gmailMessage(item.id);
-        setThread([next]);
-      } catch {
-        setError(t("app.mail.detailError"));
-      }
+      if (seq === detailSeq.current) setError(t("app.mail.detailError"));
     } finally {
-      setDetailLoading(false);
+      if (seq === detailSeq.current) setDetailLoading(false);
     }
   }
 
@@ -321,6 +429,8 @@ export default function MailPage() {
                         <button
                           type="button"
                           onClick={() => void openMessage(item)}
+                          onMouseEnter={() => schedulePrefetch(item)}
+                          onMouseLeave={cancelPrefetch}
                           className={`flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition hover:bg-slate-900 ${
                             selectedId === item.id ? "bg-blue-500/10" : ""
                           }`}
@@ -453,6 +563,8 @@ export default function MailPage() {
           onSent={(message) => {
             setComposer(null);
             setSuccess(message);
+            // A send or reply changes threads; the list cache still shows instantly and refreshes.
+            threadCache.current.clear();
             void bootstrap(folder, activeQuery);
           }}
         />

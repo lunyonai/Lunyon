@@ -6,6 +6,7 @@ import { getGmailConnectionStatus, getValidGmailAccessToken } from "./gmailConne
 import { mapGoogleApiError } from "./googleOAuth.js";
 
 const GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
+const METADATA_CONCURRENCY = 10;
 
 export type GmailMessageSummary = {
   id: string;
@@ -57,6 +58,24 @@ async function gmailJson<T>(url: string, token: string): Promise<T> {
   });
   if (!response.ok) mapGoogleApiError(response.status);
   return (await response.json()) as T;
+}
+
+// Runs fn over items with at most `limit` in flight, preserving input order.
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 function summarize(body: {
@@ -131,9 +150,8 @@ export async function listGmailMessages(
   }>(`${GMAIL_BASE}/messages?${params.toString()}`, token);
 
   const ids = (list.messages ?? []).slice(0, maxResults);
-  const messages: GmailMessageSummary[] = [];
-  for (const item of ids) {
-    const detail = await gmailJson<{
+  const details = await mapWithConcurrency(ids, METADATA_CONCURRENCY, (item) =>
+    gmailJson<{
       id?: string;
       threadId?: string;
       snippet?: string;
@@ -143,10 +161,11 @@ export async function listGmailMessages(
     }>(
       `${GMAIL_BASE}/messages/${encodeURIComponent(item.id)}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date`,
       token,
-    );
-    const summary = summarize(detail);
-    if (summary) messages.push(summary);
-  }
+    ),
+  );
+  const messages = details
+    .map((detail) => summarize(detail))
+    .filter((summary): summary is GmailMessageSummary => summary !== null);
 
   return {
     folder,
