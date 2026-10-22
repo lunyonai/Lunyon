@@ -1,23 +1,30 @@
-import { useState } from "react";
+import { Monitor, Moon, Settings, Sun } from "lucide-react";
+import { useId, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../../components/ui/Button";
+import { Card, CardHeader } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { SegmentedControl } from "../../components/ui/SegmentedControl";
+import { inputClass } from "../../components/ui/styles";
 import { LOCALES, localeMeta, type Locale } from "../../i18n/config";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { loginPath } from "../../i18n/paths";
 import { useAuth } from "../../hooks/useAuth";
 import AppShell from "../../layouts/AppShell";
 import { userFullName } from "../../lib/userDisplay";
+import { useTheme, type ThemePreference } from "../../theme/themeContext";
 import AiKeyPanel from "./AiKeyPanel";
 import GoogleIntegrationsPanel from "./GoogleIntegrationsPanel";
 import PlanPanel from "./PlanPanel";
 import PrivacyPanel from "./PrivacyPanel";
 
-const fieldClass =
-  "mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:opacity-70";
-
 export default function SettingsPage() {
   const { t, locale, setLocale } = useLocale();
+  const { preference, setPreference } = useTheme();
   const navigate = useNavigate();
   const { user, updateProfile, updatePassword, resetPassword, logout } = useAuth();
+  const fieldId = useId();
   const [name, setName] = useState(userFullName(user));
   const [profileBusy, setProfileBusy] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
@@ -101,47 +108,59 @@ export default function SettingsPage() {
     }
   }
 
+  const themeOptions: ReadonlyArray<{ value: ThemePreference; label: string; icon: typeof Sun }> = [
+    { value: "light", label: t("app.settings.themeLight"), icon: Sun },
+    { value: "dark", label: t("app.settings.themeDark"), icon: Moon },
+    { value: "system", label: t("app.settings.themeSystem"), icon: Monitor },
+  ];
+
+  const localeOptions = LOCALES.map((item) => ({
+    value: item,
+    label: `${t(`app.settings.lang.${item}`)} (${localeMeta[item].shortLabel})`,
+  }));
+
   return (
     <AppShell>
-      <section className="mx-auto max-w-2xl space-y-8">
-        <div>
-          <p className="text-sm font-medium text-blue-400">{t("app.settings.kicker")}</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-            {t("app.settings.title")}
-          </h1>
-          <p className="mt-2 text-sm text-slate-400">{t("app.settings.subtitle")}</p>
-        </div>
+      <section className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          icon={Settings}
+          tone="neutral"
+          title={t("app.settings.title")}
+          description={t("app.settings.subtitle")}
+        />
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-base font-semibold text-white">
-            {t("app.settings.accountSection")}
-          </h2>
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.settings.name")}
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              className={fieldClass}
-            />
-          </label>
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.settings.email")}
-            <input value={user?.email ?? ""} disabled className={fieldClass} />
-          </label>
-          <p className="mt-2 text-xs text-slate-500">{t("app.settings.emailLocked")}</p>
-          <button
-            type="button"
-            onClick={handleSaveProfile}
-            disabled={profileBusy}
-            className="mt-5 flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-          >
-            {profileBusy ? t("app.common.saving") : t("app.settings.saveProfile")}
-          </button>
-          {profileMessage && (
-            <p className="mt-2 text-sm text-emerald-400">{profileMessage}</p>
-          )}
-          {profileError && <p className="mt-2 text-sm text-red-400">{profileError}</p>}
-        </section>
+        <Card>
+          <CardHeader title={t("app.settings.accountSection")} />
+          <div className="mt-5 space-y-4">
+            <Field label={t("app.settings.name")} htmlFor={`${fieldId}-name`}>
+              <input
+                id={`${fieldId}-name`}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <Field
+              label={t("app.settings.email")}
+              htmlFor={`${fieldId}-email`}
+              hint={t("app.settings.emailLocked")}
+            >
+              <input
+                id={`${fieldId}-email`}
+                value={user?.email ?? ""}
+                disabled
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+            {profileMessage && <p className="text-sm text-success-text">{profileMessage}</p>}
+            {profileError && <p className="text-sm text-danger-text">{profileError}</p>}
+            <Button variant="primary" onClick={handleSaveProfile} disabled={profileBusy}>
+              {profileBusy ? t("app.common.saving") : t("app.settings.saveProfile")}
+            </Button>
+          </div>
+        </Card>
 
         <GoogleIntegrationsPanel />
 
@@ -149,88 +168,76 @@ export default function SettingsPage() {
 
         <AiKeyPanel />
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-base font-semibold text-white">
-            {t("app.settings.languageSection")}
-          </h2>
-          <p className="mt-2 text-sm text-slate-400">{t("app.settings.languageHint")}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {LOCALES.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setLocale(item as Locale)}
-                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-                  locale === item
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-800 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {t(`app.settings.lang.${item}`)} ({localeMeta[item].shortLabel})
-              </button>
-            ))}
-          </div>
-        </section>
+        <Card>
+          <CardHeader
+            title={t("app.settings.appearanceSection")}
+            description={t("app.settings.appearanceHint")}
+          />
+          <SegmentedControl
+            className="mt-4"
+            ariaLabel={t("app.settings.appearanceSection")}
+            options={themeOptions}
+            value={preference}
+            onChange={setPreference}
+          />
+        </Card>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-base font-semibold text-white">
-            {t("app.settings.securitySection")}
-          </h2>
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.settings.newPassword")}
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className={fieldClass}
-            />
-          </label>
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.settings.confirmPassword")}
-            <input
-              type="password"
-              value={confirm}
-              onChange={(event) => setConfirm(event.target.value)}
-              className={fieldClass}
-            />
-          </label>
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handlePassword}
-              disabled={passwordBusy}
-              className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-            >
-              {passwordBusy ? t("app.common.saving") : t("app.settings.updatePassword")}
-            </button>
-            <button
-              type="button"
-              onClick={handleResetEmail}
-              disabled={resetBusy}
-              className="flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900 disabled:opacity-60"
-            >
+        <Card>
+          <CardHeader
+            title={t("app.settings.languageSection")}
+            description={t("app.settings.languageHint")}
+          />
+          <SegmentedControl
+            className="mt-4 max-w-full flex-wrap"
+            ariaLabel={t("app.settings.languageSection")}
+            options={localeOptions}
+            value={locale}
+            onChange={(item) => setLocale(item as Locale)}
+          />
+        </Card>
+
+        <Card>
+          <CardHeader title={t("app.settings.securitySection")} />
+          <div className="mt-5 space-y-4">
+            <Field label={t("app.settings.newPassword")} htmlFor={`${fieldId}-password`}>
+              <input
+                id={`${fieldId}-password`}
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <Field label={t("app.settings.confirmPassword")} htmlFor={`${fieldId}-confirm`}>
+              <input
+                id={`${fieldId}-confirm`}
+                type="password"
+                value={confirm}
+                onChange={(event) => setConfirm(event.target.value)}
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+            {passwordMessage && <p className="text-sm text-success-text">{passwordMessage}</p>}
+            {resetMessage && <p className="text-sm text-success-text">{resetMessage}</p>}
+            {passwordError && <p className="text-sm text-danger-text">{passwordError}</p>}
+            {resetError && <p className="text-sm text-danger-text">{resetError}</p>}
+            <Button onClick={handleResetEmail} disabled={resetBusy}>
               {resetBusy ? t("app.common.saving") : t("app.settings.resetPassword")}
-            </button>
+            </Button>
+            <Button variant="primary" onClick={handlePassword} disabled={passwordBusy}>
+              {passwordBusy ? t("app.common.saving") : t("app.settings.updatePassword")}
+            </Button>
           </div>
-          {passwordMessage && (
-            <p className="mt-2 text-sm text-emerald-400">{passwordMessage}</p>
-          )}
-          {resetMessage && (
-            <p className="mt-2 text-sm text-emerald-400">{resetMessage}</p>
-          )}
-          {passwordError && <p className="mt-2 text-sm text-red-400">{passwordError}</p>}
-          {resetError && <p className="mt-2 text-sm text-red-400">{resetError}</p>}
 
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signOutBusy}
-            className="mt-6 flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900 disabled:opacity-60"
-          >
-            {signOutBusy ? t("app.account.signingOut") : t("app.account.signOut")}
-          </button>
-          {signOutError && <p className="mt-2 text-sm text-red-400">{signOutError}</p>}
-        </section>
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-line pt-5">
+            {signOutError && <p className="text-sm text-danger-text">{signOutError}</p>}
+            <Button variant="secondary" onClick={handleSignOut} disabled={signOutBusy}>
+              {signOutBusy ? t("app.account.signingOut") : t("app.account.signOut")}
+            </Button>
+          </div>
+        </Card>
 
         <PrivacyPanel />
       </section>

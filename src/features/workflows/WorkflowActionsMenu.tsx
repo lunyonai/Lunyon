@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Ellipsis } from "lucide-react";
+import { Copy, Ellipsis, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useLocale } from "../../i18n/LocaleProvider";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { IconButton } from "../../components/ui/Button";
+import { cx, dangerMenuItemClass, menuItemClass, popoverClass } from "../../components/ui/styles";
 import { useWorkflows } from "./WorkflowsContext";
 import type { Workflow } from "./workflowTypes";
 
@@ -38,23 +40,22 @@ export default function WorkflowActionsMenu({
     };
   }, [open]);
 
+  const active = workflow.status === "active";
+
   return (
     <div ref={rootRef} className="relative">
-      <button
-        type="button"
+      <IconButton
         aria-label={t("app.workflows.moreAria", { title })}
         aria-expanded={open}
+        aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-800 hover:text-slate-200"
+        className={open ? "bg-surface-2" : undefined}
       >
-        <Ellipsis className="h-4 w-4" />
-      </button>
+        <Ellipsis />
+      </IconButton>
 
       {open && (
-        <div
-          role="menu"
-          className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-slate-800 bg-slate-950 p-1 shadow-xl"
-        >
+        <div role="menu" className={cx(popoverClass, "absolute right-0 z-20 mt-1 w-44")}>
           <button
             type="button"
             role="menuitem"
@@ -62,8 +63,9 @@ export default function WorkflowActionsMenu({
               setOpen(false);
               onEdit();
             }}
-            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-900"
+            className={menuItemClass}
           >
+            <Pencil aria-hidden="true" />
             {t("app.workflows.menuEdit")}
           </button>
           <button
@@ -73,26 +75,24 @@ export default function WorkflowActionsMenu({
               void duplicateWorkflow(workflow.id, `${title}${t("app.common.copySuffix")}`);
               setOpen(false);
             }}
-            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-900"
+            className={menuItemClass}
           >
+            <Copy aria-hidden="true" />
             {t("app.workflows.menuDuplicate")}
           </button>
           <button
             type="button"
             role="menuitem"
             onClick={() => {
-              void setStatus(
-                workflow.id,
-                workflow.status === "active" ? "inactive" : "active",
-              );
+              void setStatus(workflow.id, active ? "inactive" : "active");
               setOpen(false);
             }}
-            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-900"
+            className={menuItemClass}
           >
-            {workflow.status === "active"
-              ? t("app.workflows.menuDeactivate")
-              : t("app.workflows.menuActivate")}
+            {active ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
+            {active ? t("app.workflows.menuDeactivate") : t("app.workflows.menuActivate")}
           </button>
+          <div className="my-1 border-t border-line" role="separator" />
           <button
             type="button"
             role="menuitem"
@@ -100,8 +100,9 @@ export default function WorkflowActionsMenu({
               setOpen(false);
               setConfirmDelete(true);
             }}
-            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-900"
+            className={dangerMenuItemClass}
           >
+            <Trash2 aria-hidden="true" />
             {t("app.workflows.menuDelete")}
           </button>
         </div>

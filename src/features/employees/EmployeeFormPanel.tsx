@@ -1,6 +1,12 @@
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useId, useState } from "react";
 import { useLocale } from "../../i18n/LocaleProvider";
+import { Alert } from "../../components/ui/Alert";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Field } from "../../components/ui/Field";
+import { Modal } from "../../components/ui/Modal";
+import { SegmentedControl } from "../../components/ui/SegmentedControl";
+import { cx, inputClass, textareaClass } from "../../components/ui/styles";
 import { useEmployees } from "./EmployeesContext";
 import {
   AVAILABLE_CAPABILITIES,
@@ -12,11 +18,9 @@ type EmployeeFormPanelProps = {
   onClose: () => void;
 };
 
-const fieldClass =
-  "mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10";
-
 export default function EmployeeFormPanel({ onClose }: EmployeeFormPanelProps) {
   const { t } = useLocale();
+  const id = useId();
   const { addEmployee } = useEmployees();
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
@@ -68,185 +72,140 @@ export default function EmployeeFormPanel({ onClose }: EmployeeFormPanelProps) {
     }
   }
 
+  const statusOptions = (["active", "paused"] as const).map((value) => ({
+    value,
+    label: t(`app.employees.status${value === "active" ? "Active" : "Paused"}`),
+  }));
+
   return (
-    <div className="fixed inset-0 z-50">
-      <button
-        type="button"
-        aria-label={t("app.employees.closePanel")}
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
-      />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-800 bg-slate-950 shadow-2xl shadow-black/50">
-        <div className="flex items-start justify-between border-b border-slate-800 p-6">
-          <div>
-            <p className="text-base font-semibold text-white">
-              {t("app.employees.addTitle")}
-            </p>
-            <p className="mt-1 text-sm text-slate-400">
-              {t("app.employees.addSubtitle")}
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label={t("app.common.close")}
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-slate-200"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-6 overflow-y-auto p-6">
-          <section>
-            <p className="text-xs font-semibold tracking-wider text-slate-500">
-              {t("app.employees.identitySection")}
-            </p>
-            <label className="mt-4 block text-sm font-medium text-white">
-              {t("app.employees.fieldName")}
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className={fieldClass}
-              />
-            </label>
-            {errors.name && (
-              <p className="mt-1 text-xs text-red-400">{errors.name}</p>
-            )}
-            <label className="mt-4 block text-sm font-medium text-white">
-              {t("app.employees.fieldRole")}
-              <input
-                value={role}
-                onChange={(event) => setRole(event.target.value)}
-                className={fieldClass}
-              />
-            </label>
-            {errors.role && (
-              <p className="mt-1 text-xs text-red-400">{errors.role}</p>
-            )}
-            <label className="mt-4 block text-sm font-medium text-white">
-              {t("app.employees.fieldDescription")}
-              <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                className={`${fieldClass} min-h-20 resize-none`}
-              />
-            </label>
-          </section>
-
-          <section>
-            <p className="text-xs font-semibold tracking-wider text-slate-500">
-              {t("app.employees.purposeSection")}
-            </p>
-            <label className="mt-4 block text-sm font-medium text-white">
-              {t("app.employees.fieldPurpose")}
-              <textarea
-                value={purpose}
-                onChange={(event) => setPurpose(event.target.value)}
-                className={`${fieldClass} min-h-24 resize-none`}
-              />
-            </label>
-            {errors.purpose && (
-              <p className="mt-1 text-xs text-red-400">{errors.purpose}</p>
-            )}
-          </section>
-
-          <section>
-            <p className="text-xs font-semibold tracking-wider text-slate-500">
-              {t("app.employees.instructionsSection")}
-            </p>
-            <label className="mt-4 block text-sm font-medium text-white">
-              {t("app.employees.fieldInstructions")}
-              <textarea
-                value={instructions}
-                onChange={(event) => setInstructions(event.target.value)}
-                className={`${fieldClass} min-h-28 resize-none`}
-              />
-            </label>
-            {errors.instructions && (
-              <p className="mt-1 text-xs text-red-400">{errors.instructions}</p>
-            )}
-            {errors.form && (
-              <p className="mt-1 text-xs text-red-400">{errors.form}</p>
-            )}
-          </section>
-
-          <section>
-            <p className="text-xs font-semibold tracking-wider text-slate-500">
-              {t("app.employees.capabilitiesSection")}
-            </p>
-            <div className="mt-3 space-y-2">
-              {AVAILABLE_CAPABILITIES.map((id) => (
-                <label
-                  key={id}
-                  className="flex items-center gap-3 rounded-xl border border-slate-800 px-3 py-2.5 text-sm text-slate-200"
-                >
-                  <input
-                    type="checkbox"
-                    checked={capabilities.includes(id)}
-                    onChange={() => toggleCapability(id)}
-                    className="accent-blue-500"
-                  />
-                  {t(`app.employees.cap.${id}`)}
-                </label>
-              ))}
-              {UPCOMING_CAPABILITIES.map((id) => (
-                <label
-                  key={id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 px-3 py-2.5 text-sm text-slate-500"
-                >
-                  <span className="flex items-center gap-3">
-                    <input type="checkbox" disabled className="accent-blue-500" />
-                    {t(`app.employees.cap.${id}`)}
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wide">
-                    {t("app.common.comingLater")}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <p className="text-xs font-semibold tracking-wider text-slate-500">
-              {t("app.employees.statusSection")}
-            </p>
-            <div className="mt-3 flex gap-2">
-              {(["active", "paused"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setStatus(value)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                    status === value
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-800 text-slate-400"
-                  }`}
-                >
-                  {t(`app.employees.status${value === "active" ? "Active" : "Paused"}`)}
-                </button>
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <div className="flex gap-2 border-t border-slate-800 p-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-11 flex-1 items-center justify-center rounded-xl border border-slate-800 text-sm font-medium text-slate-300 transition hover:bg-slate-900"
-          >
-            {t("app.common.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving}
-            className="flex h-11 flex-1 items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-          >
+    <Modal
+      title={t("app.employees.addTitle")}
+      description={t("app.employees.addSubtitle")}
+      onClose={onClose}
+      size="lg"
+      closeLabel={t("app.common.close")}
+      footer={
+        <>
+          <Button onClick={onClose}>{t("app.common.cancel")}</Button>
+          <Button variant="primary" onClick={() => void handleSave()} loading={saving}>
             {saving ? t("app.common.saving") : t("app.common.save")}
-          </button>
-        </div>
-      </aside>
-    </div>
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-8">
+        <section className="space-y-4">
+          <h3 className="text-sm font-semibold text-fg">{t("app.employees.identitySection")}</h3>
+          <Field label={t("app.employees.fieldName")} htmlFor={`${id}-name`} error={errors.name}>
+            <input
+              id={`${id}-name`}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              aria-invalid={errors.name ? true : undefined}
+              className={inputClass}
+            />
+          </Field>
+          <Field label={t("app.employees.fieldRole")} htmlFor={`${id}-role`} error={errors.role}>
+            <input
+              id={`${id}-role`}
+              value={role}
+              onChange={(event) => setRole(event.target.value)}
+              aria-invalid={errors.role ? true : undefined}
+              className={inputClass}
+            />
+          </Field>
+          <Field label={t("app.employees.fieldDescription")} htmlFor={`${id}-description`}>
+            <textarea
+              id={`${id}-description`}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              className={cx(textareaClass, "min-h-20 resize-none")}
+            />
+          </Field>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-sm font-semibold text-fg">{t("app.employees.purposeSection")}</h3>
+          <Field
+            label={t("app.employees.fieldPurpose")}
+            htmlFor={`${id}-purpose`}
+            error={errors.purpose}
+          >
+            <textarea
+              id={`${id}-purpose`}
+              value={purpose}
+              onChange={(event) => setPurpose(event.target.value)}
+              aria-invalid={errors.purpose ? true : undefined}
+              className={cx(textareaClass, "min-h-24 resize-none")}
+            />
+          </Field>
+        </section>
+
+        <section className="space-y-4">
+          <h3 className="text-sm font-semibold text-fg">
+            {t("app.employees.instructionsSection")}
+          </h3>
+          <Field
+            label={t("app.employees.fieldInstructions")}
+            htmlFor={`${id}-instructions`}
+            error={errors.instructions}
+          >
+            <textarea
+              id={`${id}-instructions`}
+              value={instructions}
+              onChange={(event) => setInstructions(event.target.value)}
+              aria-invalid={errors.instructions ? true : undefined}
+              className={cx(textareaClass, "min-h-28 resize-none")}
+            />
+          </Field>
+          {errors.form && <Alert tone="danger">{errors.form}</Alert>}
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-fg">
+            {t("app.employees.capabilitiesSection")}
+          </h3>
+          <div className="space-y-2">
+            {AVAILABLE_CAPABILITIES.map((capability) => (
+              <label
+                key={capability}
+                className="flex cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2.5 text-sm text-fg transition-colors hover:bg-surface-2"
+              >
+                <input
+                  type="checkbox"
+                  checked={capabilities.includes(capability)}
+                  onChange={() => toggleCapability(capability)}
+                  className="h-4 w-4 accent-primary"
+                />
+                {t(`app.employees.cap.${capability}`)}
+              </label>
+            ))}
+            {UPCOMING_CAPABILITIES.map((capability) => (
+              <label
+                key={capability}
+                className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-sm text-fg-subtle"
+              >
+                <span className="flex items-center gap-3">
+                  <input type="checkbox" disabled className="h-4 w-4 accent-primary" />
+                  {t(`app.employees.cap.${capability}`)}
+                </span>
+                <Badge>{t("app.common.comingLater")}</Badge>
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="text-sm font-semibold text-fg">{t("app.employees.statusSection")}</h3>
+          <SegmentedControl
+            size="sm"
+            ariaLabel={t("app.employees.statusSection")}
+            options={statusOptions}
+            value={status}
+            onChange={setStatus}
+          />
+        </section>
+      </div>
+    </Modal>
   );
 }

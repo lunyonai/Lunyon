@@ -3,12 +3,16 @@ import { Link } from "react-router-dom";
 import {
   Bot,
   CalendarDays,
-  CheckCircle2,
-  Circle,
+  Check,
+  ChevronRight,
   CreditCard,
   Mail,
   Sparkles,
 } from "lucide-react";
+import { Badge } from "../../../components/ui/Badge";
+import { Card, CardHeader } from "../../../components/ui/Card";
+import { IconTile, type TileTone } from "../../../components/ui/IconTile";
+import { buttonClass, cx } from "../../../components/ui/styles";
 import { useLocale } from "../../../i18n/LocaleProvider";
 import { localeMeta } from "../../../i18n/config";
 import {
@@ -31,6 +35,34 @@ type WorkspaceStatus = {
 
 function settledValue<T>(result: PromiseSettledResult<T>) {
   return result.status === "fulfilled" ? result.value : null;
+}
+
+/** Circular progress for the onboarding checklist. */
+function ProgressRing({ done, total }: { done: number; total: number }) {
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const progress = total ? done / total : 0;
+  return (
+    <div className="relative h-12 w-12 shrink-0">
+      <svg viewBox="0 0 44 44" className="h-12 w-12 -rotate-90" aria-hidden="true">
+        <circle cx="22" cy="22" r={radius} fill="none" strokeWidth="4" className="stroke-surface-3" />
+        <circle
+          cx="22"
+          cy="22"
+          r={radius}
+          fill="none"
+          strokeWidth="4"
+          strokeLinecap="round"
+          className="stroke-primary transition-[stroke-dashoffset] duration-500"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - progress)}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums text-fg">
+        {done}/{total}
+      </span>
+    </div>
+  );
 }
 
 export default function SystemStatus() {
@@ -80,7 +112,7 @@ export default function SystemStatus() {
       })
     : t("app.dashboard.planFree");
 
-  const services = [
+  const services: Array<{ key: string; name: string; ok: boolean; detail: string; icon: typeof Bot; tone: TileTone }> = [
     {
       key: "calendar",
       name: t("app.dashboard.serviceCalendar"),
@@ -89,6 +121,7 @@ export default function SystemStatus() {
         ? (status.google.email ?? t("app.dashboard.connected"))
         : t("app.dashboard.notConnected"),
       icon: CalendarDays,
+      tone: "cyan",
     },
     {
       key: "gmail",
@@ -98,6 +131,7 @@ export default function SystemStatus() {
         ? (status.gmail.email ?? t("app.dashboard.connected"))
         : t("app.dashboard.notConnected"),
       icon: Mail,
+      tone: "rose",
     },
     {
       key: "ai",
@@ -105,6 +139,7 @@ export default function SystemStatus() {
       ok: aiReady,
       detail: aiDetail,
       icon: Bot,
+      tone: "violet",
     },
     {
       key: "plan",
@@ -112,8 +147,10 @@ export default function SystemStatus() {
       ok: planActive,
       detail: planDetail,
       icon: CreditCard,
+      tone: "amber",
     },
   ];
+  const readyCount = services.filter((service) => service.ok).length;
 
   const checklist = [
     {
@@ -131,73 +168,109 @@ export default function SystemStatus() {
       to: "/prompts",
     },
   ];
-  const pending = checklist.filter((item) => !item.done).length;
+  const done = checklist.filter((item) => item.done).length;
+  const pending = checklist.length - done;
 
   return (
-    <section className="rounded-3xl border border-blue-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-6">
-      <p className="text-xs font-semibold uppercase tracking-[0.25em] text-blue-400">
-        {t("app.dashboard.systemKicker")}
-      </p>
-      <h2 className="mt-2 text-2xl font-semibold text-white">{t("app.dashboard.statusTitle")}</h2>
+    <div className="space-y-6">
+      <Card padded={false}>
+        <div className="border-b border-line px-5 py-4">
+          <CardHeader
+            title={t("app.dashboard.statusTitle")}
+            actions={
+              status && (
+                <Badge tone={readyCount === services.length ? "success" : "warning"} dot>
+                  {readyCount}/{services.length}
+                </Badge>
+              )
+            }
+          />
+        </div>
 
-      <ul className="mt-6 space-y-3">
-        {services.map((service) => {
-          const Icon = service.icon;
-          return (
-            <li key={service.key} className="flex items-center justify-between gap-3">
-              <span className="flex min-w-0 items-center gap-3">
-                <Icon className="h-4 w-4 shrink-0 text-blue-400" />
-                <span className="min-w-0">
-                  <span className="block text-sm text-white">{service.name}</span>
-                  <span className="block truncate text-xs text-slate-500">
-                    {status ? service.detail : t("app.common.loading")}
+        <ul className="divide-y divide-line">
+          {services.map((service) => (
+            <li key={service.key}>
+              <Link
+                to="/settings"
+                className="group flex items-center justify-between gap-3 px-5 py-3 transition-colors hover:bg-surface-2/60"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <IconTile icon={service.icon} tone={service.tone} size="sm" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-fg">{service.name}</span>
+                    <span className="block truncate text-xs text-fg-subtle">
+                      {status ? service.detail : t("app.common.loading")}
+                    </span>
                   </span>
                 </span>
-              </span>
-              <span
-                className={`h-2 w-2 shrink-0 rounded-full ${
-                  !status ? "bg-slate-600" : service.ok ? "bg-emerald-400" : "bg-amber-400"
-                }`}
-              />
+                <span className="flex shrink-0 items-center gap-2">
+                  <span
+                    aria-hidden="true"
+                    className={cx(
+                      "h-2 w-2 rounded-full",
+                      !status
+                        ? "bg-surface-3"
+                        : service.ok
+                          ? "bg-success shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-success)_20%,transparent)]"
+                          : "bg-warning shadow-[0_0_0_3px_color-mix(in_srgb,var(--ui-warning)_20%,transparent)]",
+                    )}
+                  />
+                  <ChevronRight className="h-4 w-4 text-fg-placeholder transition group-hover:translate-x-0.5 group-hover:text-fg" />
+                </span>
+              </Link>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
 
-      {!planActive && status && (
-        <Link
-          to="/settings"
-          className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm font-medium text-blue-300 transition hover:bg-blue-500/20"
-        >
-          <Sparkles className="h-4 w-4" />
-          {t("app.dashboard.upgrade")}
-        </Link>
-      )}
+        {!planActive && status && (
+          <div className="border-t border-line p-4">
+            <Link
+              to="/settings"
+              className={cx(
+                buttonClass({ variant: "primary", block: true }),
+                "bg-gradient-to-r from-primary to-tint-violet hover:opacity-95",
+              )}
+            >
+              <Sparkles />
+              {t("app.dashboard.upgrade")}
+            </Link>
+          </div>
+        )}
+      </Card>
 
       {pending > 0 && (
-        <div className="mt-8">
-          <p className="text-sm font-semibold text-white">{t("app.dashboard.gettingStarted")}</p>
-          <ul className="mt-3 space-y-2">
-            {checklist.map((item) => (
+        <Card padded={false}>
+          <div className="flex items-center gap-4 border-b border-line px-5 py-4">
+            <ProgressRing done={done} total={checklist.length} />
+            <CardHeader title={t("app.dashboard.gettingStarted")} />
+          </div>
+          <ol className="p-2">
+            {checklist.map((item, index) => (
               <li key={item.key}>
                 <Link
                   to={item.to}
-                  className="flex items-center gap-3 rounded-xl px-2 py-1.5 text-sm transition hover:bg-slate-800/60"
+                  className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-surface-2"
                 >
-                  {item.done ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
-                  ) : (
-                    <Circle className="h-4 w-4 shrink-0 text-slate-600" />
-                  )}
-                  <span className={item.done ? "text-slate-500 line-through" : "text-slate-200"}>
+                  <span
+                    className={cx(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                      item.done
+                        ? "bg-success text-white"
+                        : "border border-line-strong text-fg-muted group-hover:border-primary group-hover:text-primary-text",
+                    )}
+                  >
+                    {item.done ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : index + 1}
+                  </span>
+                  <span className={cx("flex-1", item.done ? "text-fg-subtle line-through" : "text-fg")}>
                     {item.label}
                   </span>
+                  <ChevronRight className="h-4 w-4 text-fg-placeholder opacity-0 transition-opacity group-hover:opacity-100" />
                 </Link>
               </li>
             ))}
-          </ul>
-        </div>
+          </ol>
+        </Card>
       )}
-    </section>
+    </div>
   );
 }

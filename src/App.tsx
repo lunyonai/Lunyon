@@ -19,6 +19,7 @@ import AgentPage from "./features/agent/AgentPage";
 import LandingPage from "./features/landing/LandingPage";
 import { LocaleProvider } from "./i18n/LocaleProvider";
 import { unknownPathFallback } from "./i18n/paths";
+import { ThemeProvider } from "./theme/ThemeProvider";
 
 function UnknownRoute() {
   const { pathname } = useLocation();
@@ -125,14 +126,16 @@ function AppRoutes() {
 export default function App() {
   return (
     <LocaleProvider>
-      <OAuthReturnHandler />
-      <NotificationsProvider>
-        <EmployeesProvider>
-          <WorkflowsProvider>
-            <AppRoutes />
-          </WorkflowsProvider>
-        </EmployeesProvider>
-      </NotificationsProvider>
+      <ThemeProvider>
+        <OAuthReturnHandler />
+        <NotificationsProvider>
+          <EmployeesProvider>
+            <WorkflowsProvider>
+              <AppRoutes />
+            </WorkflowsProvider>
+          </EmployeesProvider>
+        </NotificationsProvider>
+      </ThemeProvider>
     </LocaleProvider>
   );
 }

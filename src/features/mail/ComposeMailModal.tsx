@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Send } from "lucide-react";
+import { Alert } from "../../components/ui/Alert";
+import { Button } from "../../components/ui/Button";
+import { Modal } from "../../components/ui/Modal";
+import { cx, inputClass, labelClass, textareaClass } from "../../components/ui/styles";
 import { useLocale } from "../../i18n/LocaleProvider";
 import {
   api,
@@ -9,9 +13,6 @@ import {
 } from "../../lib/api";
 
 export type ComposeMode = "compose" | "reply" | "replyAll";
-
-const fieldClass =
-  "mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500";
 
 function splitEmails(value: string) {
   return value
@@ -140,94 +141,76 @@ export default function ComposeMailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50">
-      <button
-        type="button"
-        aria-label={t("app.common.close")}
-        onClick={busy ? undefined : onClose}
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
-      />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-800 bg-slate-950 shadow-2xl shadow-black/50">
-        <div className="flex items-start justify-between border-b border-slate-800 p-6">
-          <div>
-            <h2 className="text-base font-semibold text-white">{heading}</h2>
-            {sender && <p className="mt-1 text-xs text-slate-500">{sender}</p>}
-          </div>
-          <button type="button" onClick={onClose} disabled={busy} className="rounded-lg p-1 text-slate-400 hover:text-white">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="flex-1 space-y-4 overflow-y-auto p-6">
-          <label className="block text-sm text-slate-300">
-            {t("app.mail.fieldTo")}
-            <input className={fieldClass} value={to} onChange={(event) => setTo(event.target.value)} />
-          </label>
-          <label className="block text-sm text-slate-300">
-            {t("app.mail.fieldCc")}
-            <input className={fieldClass} value={cc} onChange={(event) => setCc(event.target.value)} />
-          </label>
-          <label className="block text-sm text-slate-300">
-            {t("app.mail.fieldBcc")}
-            <input className={fieldClass} value={bcc} onChange={(event) => setBcc(event.target.value)} />
-          </label>
-          <label className="block text-sm text-slate-300">
-            {t("app.mail.fieldSubject")}
-            <input className={fieldClass} value={subject} onChange={(event) => setSubject(event.target.value)} />
-          </label>
-          <label className="block text-sm text-slate-300">
-            {t("app.mail.fieldBody")}
-            <textarea
-              className={`${fieldClass} min-h-40`}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-            />
-          </label>
-          {preview && (
-            <div className="rounded-xl border border-slate-800 p-3 text-sm text-slate-300">
-              <p className="font-medium text-white">{t("app.mail.confirmTitle")}</p>
-              <p className="mt-2 text-xs text-slate-500">{preview.summary.from}</p>
-              <p className="mt-1">To: {preview.summary.to.join(", ")}</p>
-              {preview.summary.cc.length > 0 && <p>Cc: {preview.summary.cc.join(", ")}</p>}
-              {preview.summary.bcc.length > 0 && <p>Bcc: {preview.summary.bcc.join(", ")}</p>}
-              <p className="mt-2 font-medium">{preview.summary.subject}</p>
-              {preview.summary.threadId && (
-                <p className="mt-1 text-xs text-slate-500">Thread {preview.summary.threadId}</p>
-              )}
-              <pre className="mt-2 whitespace-pre-wrap text-xs text-slate-400">{preview.summary.text}</pre>
-            </div>
-          )}
-          {error && <p className="text-sm text-red-400">{error}</p>}
-        </div>
-        <div className="flex justify-end gap-2 border-t border-slate-800 p-6">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300"
-          >
+    <Modal
+      title={heading}
+      description={sender ?? undefined}
+      onClose={onClose}
+      busy={busy}
+      size="lg"
+      closeLabel={t("app.common.close")}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy}>
             {t("app.common.cancel")}
-          </button>
+          </Button>
           {preview ? (
-            <button
-              type="button"
-              onClick={() => void runSend()}
-              disabled={busy}
-              className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
-            >
+            <Button variant="primary" onClick={() => void runSend()} disabled={busy}>
+              {!busy && <Send aria-hidden="true" />}
               {busy ? t("app.mail.sending") : t("app.mail.confirmSend")}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              onClick={() => void runPreview()}
-              disabled={busy}
-              className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-60"
-            >
+            <Button variant="primary" onClick={() => void runPreview()} disabled={busy}>
               {busy ? t("app.common.saving") : t("app.mail.reviewSend")}
-            </button>
+            </Button>
           )}
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <label className="block space-y-1.5">
+          <span className={cx(labelClass, "block")}>{t("app.mail.fieldTo")}</span>
+          <input className={inputClass} value={to} onChange={(event) => setTo(event.target.value)} />
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block space-y-1.5">
+            <span className={cx(labelClass, "block")}>{t("app.mail.fieldCc")}</span>
+            <input className={inputClass} value={cc} onChange={(event) => setCc(event.target.value)} />
+          </label>
+          <label className="block space-y-1.5">
+            <span className={cx(labelClass, "block")}>{t("app.mail.fieldBcc")}</span>
+            <input className={inputClass} value={bcc} onChange={(event) => setBcc(event.target.value)} />
+          </label>
         </div>
-      </aside>
-    </div>
+        <label className="block space-y-1.5">
+          <span className={cx(labelClass, "block")}>{t("app.mail.fieldSubject")}</span>
+          <input className={inputClass} value={subject} onChange={(event) => setSubject(event.target.value)} />
+        </label>
+        <label className="block space-y-1.5">
+          <span className={cx(labelClass, "block")}>{t("app.mail.fieldBody")}</span>
+          <textarea
+            className={cx(textareaClass, "min-h-40")}
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+          />
+        </label>
+        {preview && (
+          <div className="rounded-lg border border-line bg-surface-2 p-4 text-sm text-fg-muted">
+            <p className="font-medium text-fg">{t("app.mail.confirmTitle")}</p>
+            <p className="mt-2 text-xs text-fg-subtle">{preview.summary.from}</p>
+            <p className="mt-1">To: {preview.summary.to.join(", ")}</p>
+            {preview.summary.cc.length > 0 && <p>Cc: {preview.summary.cc.join(", ")}</p>}
+            {preview.summary.bcc.length > 0 && <p>Bcc: {preview.summary.bcc.join(", ")}</p>}
+            <p className="mt-2 font-medium text-fg">{preview.summary.subject}</p>
+            {preview.summary.threadId && (
+              <p className="mt-1 text-xs text-fg-subtle">Thread {preview.summary.threadId}</p>
+            )}
+            <pre className="mt-2 whitespace-pre-wrap font-sans text-xs leading-5 text-fg-muted">
+              {preview.summary.text}
+            </pre>
+          </div>
+        )}
+        {error && <Alert tone="danger">{error}</Alert>}
+      </div>
+    </Modal>
   );
 }

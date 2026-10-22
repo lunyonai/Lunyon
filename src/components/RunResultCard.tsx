@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { AlertTriangle, Check, CheckCircle2, Copy } from "lucide-react";
+import { Check, CheckCircle2, Copy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLocale } from "../i18n/LocaleProvider";
+import { Alert } from "./ui/Alert";
+import { Button } from "./ui/Button";
 
 export default function RunResultCard({ title, output }: { title: string; output: string }) {
   const { t } = useLocale();
@@ -18,23 +20,19 @@ export default function RunResultCard({ title, output }: { title: string; output
   }
 
   return (
-    <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+    <div className="mt-5 rounded-xl border border-line bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-2 text-sm font-medium text-emerald-300">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+        <p className="flex min-w-0 items-center gap-2 text-sm font-semibold text-fg">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-success-text" aria-hidden="true" />
           {title}
         </p>
-        <button
-          type="button"
-          onClick={() => void handleCopy()}
-          className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-300 transition hover:bg-slate-900/60"
-        >
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+        <Button variant="ghost" size="sm" onClick={() => void handleCopy()}>
+          {copied ? <Check className="text-success-text" /> : <Copy />}
           {copied ? t("app.ai.copied") : t("app.ai.copy")}
-        </button>
+        </Button>
       </div>
 
-      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
+      <p className="mt-3 whitespace-pre-wrap break-words rounded-lg border border-line bg-surface-2 p-3 font-mono text-xs leading-5 text-fg">
         {output}
       </p>
     </div>
@@ -50,19 +48,21 @@ export function RunErrorNotice({
 }) {
   const { t } = useLocale();
   return (
-    <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 p-4">
-      <p className="flex items-start gap-2 text-sm text-red-300">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        {t(errorKey)}
-      </p>
-      {needsSettings && (
-        <Link
-          to="/settings"
-          className="mt-2 inline-flex text-xs font-medium text-blue-400 hover:text-blue-300"
-        >
-          {t("app.ai.goToSettings")}
-        </Link>
-      )}
-    </div>
+    <Alert
+      tone="danger"
+      className="mt-5"
+      action={
+        needsSettings ? (
+          <Link
+            to="/settings"
+            className="inline-flex text-xs font-medium text-primary-text underline-offset-2 hover:underline"
+          >
+            {t("app.ai.goToSettings")}
+          </Link>
+        ) : undefined
+      }
+    >
+      {t(errorKey)}
+    </Alert>
   );
 }

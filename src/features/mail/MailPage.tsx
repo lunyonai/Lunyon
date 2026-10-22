@@ -1,8 +1,21 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Inbox, Mail, Send } from "lucide-react";
+import { Inbox, Mail, PenSquare, Reply, ReplyAll, Search, Send } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Alert } from "../../components/ui/Alert";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { PageHeader } from "../../components/ui/PageHeader";
+import {
+  buttonClass,
+  cx,
+  inputClass,
+  navItemClass,
+  skeletonClass,
+} from "../../components/ui/styles";
 import AppShell from "../../layouts/AppShell";
 import { useLocale } from "../../i18n/LocaleProvider";
+import { useTheme } from "../../theme/themeContext";
 import {
   api,
   ApiError,
@@ -65,6 +78,9 @@ function listParty(
 
 export default function MailPage() {
   const { t, locale } = useLocale();
+  const { resolved } = useTheme();
+  const bodyTextColor = resolved === "dark" ? "#e2e8f0" : "#0f172a";
+  const bodyLinkColor = resolved === "dark" ? "#60a5fa" : "#1d4ed8";
   const localeTag = locale === "pt" ? "pt-BR" : locale === "es" ? "es" : "en";
   const [connected, setConnected] = useState(false);
   const [canRead, setCanRead] = useState(false);
@@ -322,7 +338,7 @@ export default function MailPage() {
     folder === "sent" ? "app.mail.emptySent" : folder === "all" ? "app.mail.emptyAll" : "app.mail.emptyInbox";
 
   const folderNav = (
-    <nav aria-label={t("app.mail.folders")} className="flex gap-1 lg:flex-col">
+    <nav aria-label={t("app.mail.folders")} className="flex gap-1 lg:flex-col lg:gap-0.5">
       {FOLDERS.map((item) => {
         const Icon = item.icon;
         const active = folder === item.id;
@@ -331,14 +347,10 @@ export default function MailPage() {
             key={item.id}
             type="button"
             onClick={() => void selectFolder(item.id)}
-            className={`flex h-10 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium transition lg:flex-none lg:justify-start ${
-              active
-                ? "bg-[var(--lunyo-primary-soft)] text-white"
-                : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
-            }`}
+            className={navItemClass(active, "w-full flex-1 justify-center lg:flex-none lg:justify-start")}
             aria-current={active ? "page" : undefined}
           >
-            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <Icon aria-hidden="true" />
             <span className="truncate">{t(item.labelKey)}</span>
           </button>
         );
@@ -348,39 +360,41 @@ export default function MailPage() {
 
   return (
     <AppShell>
-      <section className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold text-white">{t("app.mail.title")}</h1>
-            <p className="mt-1 text-sm text-slate-400">{t("app.mail.subtitle")}</p>
-          </div>
-          {canSend && (
-            <button
-              type="button"
-              onClick={() => setComposer("compose")}
-              className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500"
-            >
-              {t("app.mail.compose")}
-            </button>
-          )}
-        </div>
+      <section className="space-y-6">
+        <PageHeader
+          icon={Mail}
+          tone="rose"
+          title={t("app.mail.title")}
+          description={t("app.mail.subtitle")}
+          actions={
+            canSend && (
+              <Button variant="primary" onClick={() => setComposer("compose")}>
+                <PenSquare aria-hidden="true" />
+                {t("app.mail.compose")}
+              </Button>
+            )
+          }
+        />
 
-        {success && <p className="text-sm text-[var(--lunyo-success)]">{success}</p>}
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        {connected && canRead && !canSend && (
-          <p className="text-sm text-slate-400">{t("app.mail.sendRequired")}</p>
+        {(success || error || (connected && canRead && !canSend)) && (
+          <div className="space-y-3">
+            {success && <Alert tone="success">{success}</Alert>}
+            {error && <Alert tone="danger">{error}</Alert>}
+            {connected && canRead && !canSend && <Alert tone="info">{t("app.mail.sendRequired")}</Alert>}
+          </div>
         )}
 
         {needsConnect && !loading && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-            <p className="text-sm text-slate-300">{t("app.mail.connectHint")}</p>
-            <Link
-              to="/settings"
-              className="mt-4 inline-flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500"
-            >
-              {t("app.mail.connectCta")}
-            </Link>
-          </div>
+          <Alert
+            tone="info"
+            action={
+              <Link to="/settings" className={buttonClass({ variant: "primary", size: "sm" })}>
+                {t("app.mail.connectCta")}
+              </Link>
+            }
+          >
+            {t("app.mail.connectHint")}
+          </Alert>
         )}
 
         {connected && canRead && (
@@ -389,158 +403,171 @@ export default function MailPage() {
               <label className="sr-only" htmlFor="mail-search">
                 {t("app.mail.search")}
               </label>
-              <input
-                id="mail-search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("app.mail.searchPlaceholder")}
-                className="h-10 flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500"
-              >
-                {t("app.mail.search")}
-              </button>
+              <div className="relative flex-1">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+                  aria-hidden="true"
+                />
+                <input
+                  id="mail-search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={t("app.mail.searchPlaceholder")}
+                  className={cx(inputClass, "pl-9")}
+                />
+              </div>
+              <Button type="submit">{t("app.mail.search")}</Button>
             </form>
 
-            <div className="lg:hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-2">
+            <Card padded={false} className="p-1.5 lg:hidden">
               {folderNav}
-            </div>
+            </Card>
 
-            <div className="grid gap-4 lg:grid-cols-[11rem_minmax(0,1fr)_minmax(0,1.15fr)]">
-              <aside className="hidden rounded-2xl border border-slate-800 bg-slate-900/60 p-2 lg:block">
+            <div className="grid items-start gap-4 lg:grid-cols-[11rem_minmax(0,1fr)_minmax(0,1.15fr)]">
+              <Card as="aside" padded={false} className="hidden p-2 lg:block">
                 {folderNav}
-              </aside>
+              </Card>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60">
+              <Card as="div" padded={false} className="overflow-hidden">
                 {loading ? (
                   <ul className="space-y-2 p-4" aria-hidden="true">
                     {[0, 1, 2, 3].map((item) => (
-                      <li key={item} className="h-16 animate-pulse rounded-xl bg-slate-800/80" />
+                      <li key={item} className={cx(skeletonClass, "h-16")} />
                     ))}
                   </ul>
                 ) : messages.length === 0 ? (
-                  <p className="p-6 text-sm text-slate-500">{t(emptyKey)}</p>
+                  <EmptyState tone="rose" icon={folder === "sent" ? Send : Inbox} title={t(emptyKey)} />
                 ) : (
-                  <ul className="divide-y divide-slate-800">
-                    {messages.map((item) => (
-                      <li key={item.id}>
-                        <button
-                          type="button"
-                          onClick={() => void openMessage(item)}
-                          onMouseEnter={() => schedulePrefetch(item)}
-                          onMouseLeave={cancelPrefetch}
-                          className={`flex w-full flex-col items-start gap-1 px-4 py-3 text-left transition hover:bg-slate-900 ${
-                            selectedId === item.id ? "bg-blue-500/10" : ""
-                          }`}
-                        >
-                          <div className="flex w-full items-center gap-2">
-                            {item.unread && (
-                              <span
-                                className="h-2 w-2 shrink-0 rounded-full bg-[var(--lunyo-primary)]"
-                                aria-label={t("app.mail.unread")}
-                              />
+                  <ul className="divide-y divide-line">
+                    {messages.map((item) => {
+                      const selected = selectedId === item.id;
+                      return (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() => void openMessage(item)}
+                            onMouseEnter={() => schedulePrefetch(item)}
+                            onMouseLeave={cancelPrefetch}
+                            aria-current={selected ? "true" : undefined}
+                            className={cx(
+                              "flex w-full flex-col items-start gap-1 border-l-2 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40",
+                              selected
+                                ? "border-primary bg-primary/5"
+                                : "border-transparent hover:bg-surface-2",
                             )}
+                          >
+                            <div className="flex w-full items-center gap-2">
+                              {item.unread && (
+                                <span
+                                  className="h-2 w-2 shrink-0 rounded-full bg-primary"
+                                  aria-label={t("app.mail.unread")}
+                                />
+                              )}
+                              <p
+                                className={cx(
+                                  "min-w-0 flex-1 truncate text-sm",
+                                  item.unread ? "font-semibold text-fg" : "text-fg-muted",
+                                )}
+                              >
+                                {listParty(item, folder, t)}
+                              </p>
+                              <p className="shrink-0 text-xs tabular-nums text-fg-subtle">
+                                {formatMailDate(item.date, localeTag)}
+                              </p>
+                            </div>
                             <p
-                              className={`min-w-0 flex-1 truncate text-sm ${
-                                item.unread ? "font-semibold text-white" : "text-slate-200"
-                              }`}
+                              className={cx(
+                                "w-full truncate text-sm",
+                                item.unread ? "font-medium text-fg" : "text-fg-muted",
+                              )}
                             >
-                              {listParty(item, folder, t)}
+                              {item.subject || t("app.mail.noSubject")}
                             </p>
-                            <p className="shrink-0 text-xs text-slate-500">
-                              {formatMailDate(item.date, localeTag)}
-                            </p>
-                          </div>
-                          <p className="w-full truncate text-sm text-slate-300">
-                            {item.subject || t("app.mail.noSubject")}
-                          </p>
-                          <p className="w-full truncate text-xs text-slate-500">{item.snippet}</p>
-                        </button>
-                      </li>
-                    ))}
+                            <p className="w-full truncate text-xs text-fg-subtle">{item.snippet}</p>
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
                 {nextPage && !loading && (
-                  <div className="border-t border-slate-800 p-3">
-                    <button
-                      type="button"
-                      onClick={() => void handleMore()}
-                      disabled={loadingMore}
-                      className="flex h-10 w-full items-center justify-center rounded-xl border border-slate-800 text-sm font-medium text-slate-300 transition hover:bg-slate-900 disabled:opacity-60"
-                    >
+                  <div className="border-t border-line p-3">
+                    <Button block onClick={() => void handleMore()} disabled={loadingMore}>
                       {loadingMore ? t("app.common.loading") : t("app.mail.loadMore")}
-                    </button>
+                    </Button>
                   </div>
                 )}
-              </div>
+              </Card>
 
-              <article className="min-h-80 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+              <Card as="article" className="min-h-80">
                 {!selectedId && !detailLoading && (
-                  <p className="text-sm text-slate-500">{t("app.mail.selectHint")}</p>
+                  <EmptyState tone="rose" icon={Mail} title={t("app.mail.selectHint")} />
                 )}
-                {detailLoading && <p className="text-sm text-slate-500">{t("app.common.loading")}</p>}
+                {detailLoading && (
+                  <div className="space-y-3" role="status">
+                    <p className="text-sm text-fg-subtle">{t("app.common.loading")}</p>
+                    <div className={cx(skeletonClass, "h-5 w-2/3")} aria-hidden="true" />
+                    <div className={cx(skeletonClass, "h-4 w-1/3")} aria-hidden="true" />
+                    <div className={cx(skeletonClass, "h-48")} aria-hidden="true" />
+                  </div>
+                )}
                 {thread && focused && !detailLoading && (
                   <div className="space-y-4">
                     <div>
-                      <h2 className="text-base font-semibold text-white">
+                      <h2 className="text-base font-semibold text-fg">
                         {focused.subject || t("app.mail.noSubject")}
                       </h2>
                       {thread.length > 1 && (
-                        <p className="mt-1 text-xs text-slate-500">
+                        <p className="mt-1 text-xs text-fg-subtle">
                           {t("app.mail.threadCount", { count: String(thread.length) })}
                         </p>
                       )}
                     </div>
                     {canSend && (
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setComposer("reply")}
-                          className="flex h-9 items-center rounded-xl border border-slate-800 px-3 text-xs font-medium text-slate-200"
-                        >
+                        <Button size="sm" onClick={() => setComposer("reply")}>
+                          <Reply aria-hidden="true" />
                           {t("app.mail.reply")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setComposer("replyAll")}
-                          className="flex h-9 items-center rounded-xl border border-slate-800 px-3 text-xs font-medium text-slate-200"
-                        >
+                        </Button>
+                        <Button size="sm" onClick={() => setComposer("replyAll")}>
+                          <ReplyAll aria-hidden="true" />
                           {t("app.mail.replyAll")}
-                        </button>
+                        </Button>
                       </div>
                     )}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {thread.map((item) => (
                         <section
                           key={item.id}
-                          className={`rounded-xl border p-4 ${
-                            item.id === focused.id ? "border-slate-700 bg-slate-950/80" : "border-slate-800"
-                          }`}
+                          className={cx(
+                            "rounded-lg border p-4",
+                            item.id === focused.id ? "border-line-strong bg-surface-2" : "border-line",
+                          )}
                         >
                           <button
                             type="button"
                             onClick={() => setSelectedId(item.id)}
-                            className="w-full text-left"
+                            className="w-full rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                           >
-                            <p className="text-sm text-slate-300">{item.from}</p>
-                            {item.to && <p className="text-xs text-slate-500">{t("app.mail.toLine", { address: item.to })}</p>}
-                            <p className="text-xs text-slate-500">{formatMailDate(item.date, localeTag)}</p>
+                            <p className="text-sm font-medium text-fg">{item.from}</p>
+                            {item.to && (
+                              <p className="text-xs text-fg-subtle">{t("app.mail.toLine", { address: item.to })}</p>
+                            )}
+                            <p className="text-xs tabular-nums text-fg-subtle">{formatMailDate(item.date, localeTag)}</p>
                           </button>
                           {item.attachments.length > 0 && (
-                            <p className="mt-2 text-xs text-slate-500">{t("app.mail.attachmentsHidden")}</p>
+                            <p className="mt-2 text-xs text-fg-subtle">{t("app.mail.attachmentsHidden")}</p>
                           )}
                           {item.bodyHtml ? (
                             <iframe
                               title={t("app.mail.body")}
                               sandbox="allow-popups allow-popups-to-escape-sandbox"
                               referrerPolicy="no-referrer"
-                              srcDoc={`<base target="_blank" /><style>body{font-family:system-ui,sans-serif;color:#e2e8f0;background:transparent;}</style>${item.bodyHtml}`}
-                              className="mt-3 h-64 w-full rounded-xl border border-slate-800 bg-slate-950"
+                              srcDoc={`<base target="_blank" /><style>:root{color-scheme:${resolved};}body{font-family:system-ui,sans-serif;color:${bodyTextColor};background:transparent;}a{color:${bodyLinkColor};}</style>${item.bodyHtml}`}
+                              className="mt-3 h-64 w-full rounded-lg border border-line bg-surface"
                             />
                           ) : (
-                            <pre className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-300">
+                            <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-6 text-fg-muted">
                               {item.bodyText || item.snippet || t("app.mail.emptyBody")}
                             </pre>
                           )}
@@ -549,7 +576,7 @@ export default function MailPage() {
                     </div>
                   </div>
                 )}
-              </article>
+              </Card>
             </div>
           </>
         )}

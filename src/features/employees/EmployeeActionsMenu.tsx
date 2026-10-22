@@ -3,6 +3,8 @@ import { Ellipsis } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useLocale } from "../../i18n/LocaleProvider";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import { IconButton } from "../../components/ui/Button";
+import { cx, dangerMenuItemClass, menuItemClass, popoverClass } from "../../components/ui/styles";
 import { useEmployees } from "./EmployeesContext";
 import type { Employee } from "./employeeTypes";
 import { resolveEmployeeCopy } from "./employeeView";
@@ -39,20 +41,24 @@ export default function EmployeeActionsMenu({ employee }: EmployeeActionsMenuPro
 
   return (
     <div ref={rootRef} className="relative">
-      <button
-        type="button"
+      <IconButton
+        size="sm"
         aria-label={t("app.employees.optionsFor", { name: copy.name })}
         aria-expanded={open}
+        aria-haspopup="menu"
         onClick={() => setOpen((value) => !value)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 opacity-0 transition hover:bg-slate-800 hover:text-slate-200 focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100"
+        className={cx(
+          "group-hover:opacity-100 focus-visible:opacity-100",
+          open ? "bg-surface-2 opacity-100" : "opacity-0",
+        )}
       >
-        <Ellipsis className="h-4 w-4" />
-      </button>
+        <Ellipsis />
+      </IconButton>
 
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-slate-800 bg-slate-950 p-1 shadow-xl"
+          className={cx(popoverClass, "absolute right-0 z-20 mt-1 w-44")}
         >
           <button
             type="button"
@@ -61,7 +67,7 @@ export default function EmployeeActionsMenu({ employee }: EmployeeActionsMenuPro
               setOpen(false);
               navigate(`/employees/${employee.id}`);
             }}
-            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-900"
+            className={menuItemClass}
           >
             {t("app.employees.menuConfigure")}
           </button>
@@ -72,7 +78,7 @@ export default function EmployeeActionsMenu({ employee }: EmployeeActionsMenuPro
               void duplicateEmployee(employee.id, copy.name, t("app.common.copySuffix"));
               setOpen(false);
             }}
-            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-900"
+            className={menuItemClass}
           >
             {t("app.employees.menuDuplicate")}
           </button>
@@ -83,7 +89,7 @@ export default function EmployeeActionsMenu({ employee }: EmployeeActionsMenuPro
               void setStatus(employee.id, employee.status === "active" ? "paused" : "active");
               setOpen(false);
             }}
-            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-900"
+            className={menuItemClass}
           >
             {employee.status === "active"
               ? t("app.employees.menuPause")
@@ -96,7 +102,7 @@ export default function EmployeeActionsMenu({ employee }: EmployeeActionsMenuPro
               setOpen(false);
               setConfirmDelete(true);
             }}
-            className="flex w-full rounded-lg px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-900"
+            className={dangerMenuItemClass}
           >
             {t("app.employees.menuDelete")}
           </button>

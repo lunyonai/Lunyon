@@ -1,5 +1,12 @@
+import { CalendarDays, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { Alert } from "../../components/ui/Alert";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card, CardHeader } from "../../components/ui/Card";
+import { IconTile } from "../../components/ui/IconTile";
+import { buttonClass } from "../../components/ui/styles";
 import { useLocale } from "../../i18n/LocaleProvider";
 import {
   api,
@@ -8,6 +15,7 @@ import {
   type GoogleCalendarListItem,
   type GoogleStatus,
 } from "../../lib/api";
+
 
 export default function GoogleIntegrationsPanel() {
   const { t } = useLocale();
@@ -176,213 +184,236 @@ export default function GoogleIntegrationsPanel() {
   const needsReauth = Boolean(status?.needsReauth) || Boolean(listError);
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <h2 className="text-base font-semibold text-white">
-        {t("app.settings.integrationsSection")}
-      </h2>
-      <p className="mt-2 text-sm text-slate-400">{t("app.settings.integrationsHint")}</p>
-
-      <div className="mt-5 rounded-xl border border-slate-800 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-white">{t("app.settings.googleName")}</p>
-            <p className="mt-1 text-sm text-slate-400">
-              {connected
-                ? t("app.settings.googleConnectedAs", { email: status?.email ?? "" })
-                : t("app.settings.googleDisconnected")}
-            </p>
-            {connected && (
-              <p className="mt-1 text-xs text-slate-500">
-                {status?.canWrite
-                  ? t("app.settings.googleCapabilitiesWrite")
-                  : t("app.settings.googleCapabilities")}
-              </p>
-            )}
-          </div>
-          {connected ? (
-            <div className="flex flex-wrap gap-2">
-              {!status?.canWrite && (
-                <button
-                  type="button"
-                  onClick={() => void handleConnect(true)}
-                  disabled={busy}
-                  className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-                >
-                  {t("app.settings.googleGrantWrite")}
-                </button>
-              )}
-              <Link
-                to="/calendar"
-                className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500"
-              >
-                {t("app.settings.googleViewCalendar")}
-              </Link>
-              <button
-                type="button"
-                onClick={() => void handleDisconnect()}
-                disabled={busy}
-                className="flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900 disabled:opacity-60"
-              >
-                {t("app.settings.googleDisconnect")}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleConnect()}
-              disabled={busy}
-              className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-            >
-              {busy ? t("login.loading") : t("app.settings.googleConnect")}
-            </button>
-          )}
-        </div>
-
-        {connected && (
-          <div className="mt-5 border-t border-slate-800 pt-4">
-            <p className="text-sm font-medium text-white">{t("app.settings.calendarsTitle")}</p>
-            <p className="mt-1 text-xs text-slate-500">{t("app.settings.calendarsHint")}</p>
-            {needsReauth && (
-              <div className="mt-3">
-                <p className="text-sm text-slate-400">{t("app.settings.calendarsReauthHint")}</p>
-                <button
-                  type="button"
-                  onClick={() => void handleConnect()}
-                  disabled={busy}
-                  className="mt-3 flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-                >
-                  {t("app.settings.calendarsReauth")}
-                </button>
-              </div>
-            )}
-            {!needsReauth && calendars.length > 0 && (
-              <>
-                <ul className="mt-3 space-y-2">
-                  {calendars.map((item) => (
-                    <li key={item.id}>
-                      <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-800 px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={item.enabled}
-                          onChange={() => toggleCalendar(item.id)}
-                          className="h-4 w-4 accent-[var(--lunyo-primary)]"
-                        />
-                        <span
-                          className="h-3 w-3 shrink-0 rounded-full"
-                          style={{ backgroundColor: item.backgroundColor || "#64748b" }}
-                          aria-hidden="true"
-                        />
-                        <span className="min-w-0 flex-1 text-sm text-slate-200">
-                          {item.summary}
-                          {item.primary ? (
-                            <span className="ml-2 text-xs text-slate-500">
-                              {t("app.settings.calendarPrimary")}
-                            </span>
-                          ) : null}
-                          {item.writable === false ? (
-                            <span className="ml-2 text-xs text-slate-500">
-                              {t("app.settings.calendarReadOnly")}
-                            </span>
-                          ) : null}
-                        </span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  onClick={() => void handleSaveCalendars()}
-                  disabled={savingCalendars}
-                  className="mt-3 flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-200 transition hover:bg-slate-900 disabled:opacity-60"
-                >
-                  {savingCalendars ? t("login.loading") : t("app.settings.calendarsSave")}
-                </button>
-              </>
-            )}
-            {listError && !status?.needsReauth && (
-              <p className="mt-3 text-sm text-red-400">{listError}</p>
-            )}
-          </div>
-        )}
+    <Card padded={false}>
+      <div className="border-b border-line px-5 py-4">
+        <CardHeader
+          title={t("app.settings.integrationsSection")}
+          description={t("app.settings.integrationsHint")}
+        />
       </div>
 
-      <div className="mt-5 rounded-xl border border-slate-800 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-white">{t("app.settings.gmailName")}</p>
-            <p className="mt-1 text-sm text-slate-400">
-              {gmail?.connected && gmail.email
-                ? t("app.settings.gmailConnectedAs", { email: gmail.email })
-                : t("app.settings.gmailDisconnected")}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">{t("app.settings.gmailHint")}</p>
-            {gmail?.connected && (
-              <div className="mt-2 space-y-1 text-xs text-slate-500">
-                <p>
-                  {t("app.settings.gmailReadAccess")}:{" "}
-                  {gmail.canRead ? t("app.settings.gmailEnabled") : t("app.settings.gmailDisabled")}
-                </p>
-                <p>
-                  {t("app.settings.gmailSendAccess")}:{" "}
-                  {gmail.canSend ? t("app.settings.gmailEnabled") : t("app.settings.gmailDisabled")}
-                </p>
+      <ul className="divide-y divide-line">
+        <li className="px-5 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <IconTile icon={CalendarDays} tone="cyan" size="sm" />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-fg">{t("app.settings.googleName")}</p>
+                  {connected ? (
+                    <Badge tone={needsReauth ? "warning" : "success"} dot>
+                      {t("app.dashboard.connected")}
+                    </Badge>
+                  ) : (
+                    <Badge dot>{t("app.settings.googleDisconnected")}</Badge>
+                  )}
+                </div>
+                {connected && (
+                  <>
+                    <p className="mt-1 truncate text-sm text-fg-muted">
+                      {t("app.settings.googleConnectedAs", { email: status?.email ?? "" })}
+                    </p>
+                    <p className="mt-0.5 text-xs text-fg-subtle">
+                      {status?.canWrite
+                        ? t("app.settings.googleCapabilitiesWrite")
+                        : t("app.settings.googleCapabilities")}
+                    </p>
+                  </>
+                )}
               </div>
+            </div>
+            {connected ? (
+              <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                {!status?.canWrite && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => void handleConnect(true)}
+                    disabled={busy}
+                  >
+                    {t("app.settings.googleGrantWrite")}
+                  </Button>
+                )}
+                <Link
+                  to="/calendar"
+                  className={buttonClass({
+                    variant: status?.canWrite ? "primary" : "secondary",
+                    size: "sm",
+                  })}
+                >
+                  {t("app.settings.googleViewCalendar")}
+                </Link>
+                <Button size="sm" onClick={() => void handleDisconnect()} disabled={busy}>
+                  {t("app.settings.googleDisconnect")}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void handleConnect()}
+                disabled={busy}
+              >
+                {busy ? t("login.loading") : t("app.settings.googleConnect")}
+              </Button>
             )}
           </div>
-          {gmail?.connected ? (
-            <div className="flex flex-wrap gap-2">
-              {!gmail.canSend && (
-                <button
-                  type="button"
-                  onClick={() => void handleGmailConnect(true)}
-                  disabled={gmailBusy}
-                  className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
+
+          {connected && (
+            <div className="mt-4 border-t border-line pt-4 sm:ml-11">
+              <p className="text-sm font-medium text-fg">{t("app.settings.calendarsTitle")}</p>
+              <p className="mt-0.5 text-xs text-fg-subtle">{t("app.settings.calendarsHint")}</p>
+              {needsReauth && (
+                <Alert
+                  tone="warning"
+                  className="mt-3"
+                  action={
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => void handleConnect()}
+                      disabled={busy}
+                    >
+                      {t("app.settings.calendarsReauth")}
+                    </Button>
+                  }
                 >
-                  {t("app.settings.gmailEnableSend")}
-                </button>
+                  {t("app.settings.calendarsReauthHint")}
+                </Alert>
               )}
-              <Link
-                to="/mail"
-                className={
-                  gmail.canSend
-                    ? "flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500"
-                    : "flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900"
-                }
-              >
-                {t("app.settings.gmailViewInbox")}
-              </Link>
-              <button
-                type="button"
+              {!needsReauth && calendars.length > 0 && (
+                <>
+                  <ul className="mt-3 divide-y divide-line overflow-hidden rounded-lg border border-line">
+                    {calendars.map((item) => (
+                      <li key={item.id}>
+                        <label className="flex cursor-pointer items-center gap-3 px-3 py-2 transition-colors hover:bg-surface-2">
+                          <input
+                            type="checkbox"
+                            checked={item.enabled}
+                            onChange={() => toggleCalendar(item.id)}
+                            className="h-4 w-4 accent-primary"
+                          />
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: item.backgroundColor || "var(--color-fg-subtle)" }}
+                            aria-hidden="true"
+                          />
+                          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg">
+                            <span className="min-w-0 truncate">{item.summary}</span>
+                            {item.primary ? <Badge>{t("app.settings.calendarPrimary")}</Badge> : null}
+                            {item.writable === false ? (
+                              <Badge>{t("app.settings.calendarReadOnly")}</Badge>
+                            ) : null}
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={() => void handleSaveCalendars()}
+                      disabled={savingCalendars}
+                    >
+                      {savingCalendars ? t("login.loading") : t("app.settings.calendarsSave")}
+                    </Button>
+                  </div>
+                </>
+              )}
+              {listError && !status?.needsReauth && (
+                <p className="mt-3 text-sm text-danger-text">{listError}</p>
+              )}
+            </div>
+          )}
+        </li>
+
+        <li className="px-5 py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <IconTile icon={Mail} tone="rose" size="sm" />
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-fg">{t("app.settings.gmailName")}</p>
+                  {gmail?.connected && gmail.email ? (
+                    <Badge tone="success" dot>
+                      {t("app.dashboard.connected")}
+                    </Badge>
+                  ) : (
+                    <Badge dot>{t("app.settings.gmailDisconnected")}</Badge>
+                  )}
+                </div>
+                {gmail?.connected && gmail.email && (
+                  <p className="mt-1 truncate text-sm text-fg-muted">
+                    {t("app.settings.gmailConnectedAs", { email: gmail.email })}
+                  </p>
+                )}
+                <p className="mt-0.5 text-xs text-fg-subtle">{t("app.settings.gmailHint")}</p>
+                {gmail?.connected && (
+                  <div className="mt-2 space-y-0.5 text-xs text-fg-subtle">
+                    <p>
+                      {t("app.settings.gmailReadAccess")}:{" "}
+                      <span className={gmail.canRead ? "text-success-text" : "text-fg-muted"}>
+                        {gmail.canRead ? t("app.settings.gmailEnabled") : t("app.settings.gmailDisabled")}
+                      </span>
+                    </p>
+                    <p>
+                      {t("app.settings.gmailSendAccess")}:{" "}
+                      <span className={gmail.canSend ? "text-success-text" : "text-fg-muted"}>
+                        {gmail.canSend ? t("app.settings.gmailEnabled") : t("app.settings.gmailDisabled")}
+                      </span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            {gmail?.connected ? (
+              <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                {!gmail.canSend && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => void handleGmailConnect(true)}
+                    disabled={gmailBusy}
+                  >
+                    {t("app.settings.gmailEnableSend")}
+                  </Button>
+                )}
+                <Link
+                  to="/mail"
+                  className={buttonClass({
+                    variant: gmail.canSend ? "primary" : "secondary",
+                    size: "sm",
+                  })}
+                >
+                  {t("app.settings.gmailViewInbox")}
+                </Link>
+                <Button size="sm" onClick={() => void handleGmailConnect()} disabled={gmailBusy}>
+                  {t("app.settings.gmailReconnect")}
+                </Button>
+                <Button size="sm" onClick={() => void handleGmailDisconnect()} disabled={gmailBusy}>
+                  {t("app.settings.gmailDisconnect")}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => void handleGmailConnect()}
                 disabled={gmailBusy}
-                className="flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900 disabled:opacity-60"
               >
-                {t("app.settings.gmailReconnect")}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleGmailDisconnect()}
-                disabled={gmailBusy}
-                className="flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900 disabled:opacity-60"
-              >
-                {t("app.settings.gmailDisconnect")}
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleGmailConnect()}
-              disabled={gmailBusy}
-              className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-            >
-              {gmailBusy ? t("login.loading") : t("app.settings.gmailConnect")}
-            </button>
-          )}
-        </div>
-      </div>
+                {gmailBusy ? t("login.loading") : t("app.settings.gmailConnect")}
+              </Button>
+            )}
+          </div>
+        </li>
+      </ul>
 
-      {loadError && <p className="mt-3 text-sm text-red-400">{loadError}</p>}
-      {banner && <p className="mt-3 text-sm text-slate-300">{banner}</p>}
-    </section>
+      {(loadError || banner) && (
+        <div className="space-y-2 border-t border-line px-5 py-4">
+          {loadError && <Alert tone="danger">{loadError}</Alert>}
+          {banner && <Alert tone="info">{banner}</Alert>}
+        </div>
+      )}
+    </Card>
   );
 }

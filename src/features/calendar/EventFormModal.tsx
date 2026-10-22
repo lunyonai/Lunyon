@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Alert } from "../../components/ui/Alert";
+import { Button } from "../../components/ui/Button";
+import { Modal } from "../../components/ui/Modal";
+import {
+  cx,
+  hintClass,
+  inputClass,
+  labelClass,
+  selectClass,
+  textareaClass,
+} from "../../components/ui/styles";
 import { useLocale } from "../../i18n/LocaleProvider";
 import {
   api,
@@ -19,8 +29,9 @@ type EventFormModalProps = {
   onDone: (message: string, htmlLink?: string | null) => void;
 };
 
-const fieldClass =
-  "mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10";
+const fieldLabel = cx(labelClass, "block");
+const checkLabel = "flex items-center gap-2 text-sm text-fg";
+const checkClass = "h-4 w-4 accent-primary";
 
 function addDays(ymd: string, days: number) {
   const [year, month, day] = ymd.split("-").map(Number);
@@ -224,256 +235,232 @@ export default function EventFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50">
-      <button
-        type="button"
-        aria-label={t("app.common.close")}
-        onClick={busy ? undefined : onClose}
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
-      />
-      <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-800 bg-slate-950 shadow-2xl shadow-black/50">
-        <div className="flex items-start justify-between border-b border-slate-800 p-6">
-          <div>
-            <h2 className="text-base font-semibold text-white">{heading}</h2>
-            {selectedCalendar && (
-              <p className="mt-1 text-xs text-slate-500">{selectedCalendar.summary}</p>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="rounded-lg p-1 text-slate-400 transition hover:bg-slate-900 hover:text-white disabled:opacity-60"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-4 overflow-y-auto p-6">
-          {mode !== "delete" && (
-            <>
-              <label className="block text-sm text-slate-300">
-                {t("app.calendar.fieldTitle")}
+    <Modal
+      title={heading}
+      description={selectedCalendar ? selectedCalendar.summary : undefined}
+      onClose={onClose}
+      busy={busy}
+      size="lg"
+      closeLabel={t("app.common.close")}
+      footer={
+        <>
+          <Button onClick={onClose} disabled={busy}>
+            {t("app.common.cancel")}
+          </Button>
+          {preview ? (
+            <Button
+              variant={mode === "delete" ? "danger" : "primary"}
+              onClick={() => void runCommit()}
+              disabled={busy}
+            >
+              {busy ? t("app.common.saving") : t("app.calendar.confirmWrite")}
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              onClick={() => void runPreview()}
+              disabled={busy || (mode !== "delete" && writable.length === 0)}
+            >
+              {busy ? t("app.common.saving") : t("app.calendar.reviewChange")}
+            </Button>
+          )}
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {mode !== "delete" && (
+          <>
+            <label className="block space-y-1.5">
+              <span className={fieldLabel}>{t("app.calendar.fieldTitle")}</span>
+              <input
+                className={inputClass}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={200}
+              />
+            </label>
+            <label className="block space-y-1.5">
+              <span className={fieldLabel}>{t("app.calendar.fieldCalendar")}</span>
+              <select
+                className={selectClass}
+                value={calendarId}
+                onChange={(e) => setCalendarId(e.target.value)}
+                disabled={mode !== "create"}
+              >
+                {writable.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.summary}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={checkLabel}>
+              <input
+                type="checkbox"
+                checked={isAllDay}
+                onChange={(e) => setIsAllDay(e.target.checked)}
+                className={checkClass}
+              />
+              {t("app.calendar.allDay")}
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block space-y-1.5">
+                <span className={fieldLabel}>{t("app.calendar.fieldDate")}</span>
                 <input
-                  className={fieldClass}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  maxLength={200}
+                  type="date"
+                  className={inputClass}
+                  value={date}
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    if (endDate < e.target.value) setEndDate(e.target.value);
+                  }}
                 />
               </label>
-              <label className="block text-sm text-slate-300">
-                {t("app.calendar.fieldCalendar")}
-                <select
-                  className={fieldClass}
-                  value={calendarId}
-                  onChange={(e) => setCalendarId(e.target.value)}
-                  disabled={mode !== "create"}
-                >
-                  {writable.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.summary}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              <label className="block space-y-1.5">
+                <span className={fieldLabel}>{t("app.calendar.fieldEndDate")}</span>
                 <input
-                  type="checkbox"
-                  checked={isAllDay}
-                  onChange={(e) => setIsAllDay(e.target.checked)}
-                  className="h-4 w-4 accent-[var(--lunyo-primary)]"
+                  type="date"
+                  className={inputClass}
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                 />
-                {t("app.calendar.allDay")}
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm text-slate-300">
-                  {t("app.calendar.fieldDate")}
-                  <input
-                    type="date"
-                    className={fieldClass}
-                    value={date}
-                    onChange={(e) => {
-                      setDate(e.target.value);
-                      if (endDate < e.target.value) setEndDate(e.target.value);
-                    }}
-                  />
-                </label>
-                <label className="block text-sm text-slate-300">
-                  {t("app.calendar.fieldEndDate")}
-                  <input
-                    type="date"
-                    className={fieldClass}
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </label>
-                {!isAllDay && (
-                  <>
-                    <label className="block text-sm text-slate-300">
-                      {t("app.calendar.fieldStart")}
-                      <input
-                        type="time"
-                        className={fieldClass}
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
-                      />
-                    </label>
-                    <label className="block text-sm text-slate-300">
-                      {t("app.calendar.fieldEnd")}
-                      <input
-                        type="time"
-                        className={fieldClass}
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
-                      />
-                    </label>
-                  </>
-                )}
-              </div>
-              <p className="text-xs text-slate-500">
-                {t("app.calendar.timezone")}: {timezone}
-              </p>
-              {mode !== "reschedule" && (
+              {!isAllDay && (
                 <>
-                  <label className="block text-sm text-slate-300">
-                    {t("app.calendar.fieldLocation")}
+                  <label className="block space-y-1.5">
+                    <span className={fieldLabel}>{t("app.calendar.fieldStart")}</span>
                     <input
-                      className={fieldClass}
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      maxLength={500}
+                      type="time"
+                      className={inputClass}
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
                     />
                   </label>
-                  <label className="block text-sm text-slate-300">
-                    {t("app.calendar.fieldDescription")}
-                    <textarea
-                      className={`${fieldClass} min-h-24`}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      maxLength={4000}
-                    />
-                  </label>
-                  <label className="block text-sm text-slate-300">
-                    {t("app.calendar.fieldAttendees")}
+                  <label className="block space-y-1.5">
+                    <span className={fieldLabel}>{t("app.calendar.fieldEnd")}</span>
                     <input
-                      className={fieldClass}
-                      value={attendees}
-                      onChange={(e) => setAttendees(e.target.value)}
-                      placeholder={t("app.calendar.attendeesHint")}
+                      type="time"
+                      className={inputClass}
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
                     />
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-slate-300">
-                    <input
-                      type="checkbox"
-                      checked={addMeet}
-                      onChange={(e) => setAddMeet(e.target.checked)}
-                      className="h-4 w-4 accent-[var(--lunyo-primary)]"
-                    />
-                    {t("app.calendar.addMeet")}
                   </label>
                 </>
               )}
-            </>
-          )}
+            </div>
+            <p className={hintClass}>
+              {t("app.calendar.timezone")}: {timezone}
+            </p>
+            {mode !== "reschedule" && (
+              <>
+                <label className="block space-y-1.5">
+                  <span className={fieldLabel}>{t("app.calendar.fieldLocation")}</span>
+                  <input
+                    className={inputClass}
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    maxLength={500}
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className={fieldLabel}>{t("app.calendar.fieldDescription")}</span>
+                  <textarea
+                    className={textareaClass}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={4000}
+                  />
+                </label>
+                <label className="block space-y-1.5">
+                  <span className={fieldLabel}>{t("app.calendar.fieldAttendees")}</span>
+                  <input
+                    className={inputClass}
+                    value={attendees}
+                    onChange={(e) => setAttendees(e.target.value)}
+                    placeholder={t("app.calendar.attendeesHint")}
+                  />
+                </label>
+                <label className={checkLabel}>
+                  <input
+                    type="checkbox"
+                    checked={addMeet}
+                    onChange={(e) => setAddMeet(e.target.checked)}
+                    className={checkClass}
+                  />
+                  {t("app.calendar.addMeet")}
+                </label>
+              </>
+            )}
+          </>
+        )}
 
-          {mode === "delete" && event && (
-            <div className="space-y-2 text-sm text-slate-300">
-              <p className="font-medium text-white">{event.title}</p>
-              <p>{event.calendarName}</p>
+        {mode === "delete" && event && (
+          <div className="space-y-1.5 rounded-lg border border-line bg-surface-2 p-4 text-sm text-fg-muted">
+            <p className="font-medium text-fg">{event.title}</p>
+            <p>{event.calendarName}</p>
+            <p className="tabular-nums">
+              {event.isAllDay
+                ? t("app.calendar.allDay")
+                : `${ymdInZone(event.start, timezone)} ${hmInZone(event.start, timezone)}`}
+            </p>
+            {event.attendees.length > 0 && (
               <p>
-                {event.isAllDay
-                  ? t("app.calendar.allDay")
-                  : `${ymdInZone(event.start, timezone)} ${hmInZone(event.start, timezone)}`}
+                {t("app.calendar.fieldAttendees")}: {event.attendees.join(", ")}
               </p>
-              {event.attendees.length > 0 && (
-                <p>
-                  {t("app.calendar.fieldAttendees")}: {event.attendees.join(", ")}
-                </p>
-              )}
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {recurring && (
-            <fieldset className="space-y-2">
-              <legend className="text-sm text-slate-300">{t("app.calendar.recurrence")}</legend>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input
-                  type="radio"
-                  name="recurrence"
-                  checked={recurrence === "this"}
-                  onChange={() => setRecurrence("this")}
-                />
-                {t("app.calendar.thisOccurrence")}
-              </label>
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input
-                  type="radio"
-                  name="recurrence"
-                  checked={recurrence === "series"}
-                  onChange={() => setRecurrence("series")}
-                />
-                {t("app.calendar.entireSeries")}
-              </label>
-            </fieldset>
-          )}
+        {recurring && (
+          <fieldset className="space-y-2">
+            <legend className={cx(labelClass, "mb-2")}>{t("app.calendar.recurrence")}</legend>
+            <label className={checkLabel}>
+              <input
+                type="radio"
+                name="recurrence"
+                checked={recurrence === "this"}
+                onChange={() => setRecurrence("this")}
+                className={checkClass}
+              />
+              {t("app.calendar.thisOccurrence")}
+            </label>
+            <label className={checkLabel}>
+              <input
+                type="radio"
+                name="recurrence"
+                checked={recurrence === "series"}
+                onChange={() => setRecurrence("series")}
+                className={checkClass}
+              />
+              {t("app.calendar.entireSeries")}
+            </label>
+          </fieldset>
+        )}
 
-          {preview && (
-            <div className="rounded-xl border border-slate-800 p-3 text-sm text-slate-300">
-              <p className="font-medium text-white">{t("app.calendar.confirmTitle")}</p>
-              <p className="mt-2">{preview.summary.title}</p>
-              <p className="mt-1 text-xs text-slate-500">{preview.summary.calendarName}</p>
-              <p className="mt-2 text-xs text-amber-200/90">{t("app.calendar.guestsNotify")}</p>
-              {(preview.summary.conflicts ?? []).length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-amber-200">{t("app.calendar.conflicts")}</p>
-                  <ul className="mt-1 space-y-1 text-xs text-slate-400">
-                    {(preview.summary.conflicts ?? []).map((item) => (
-                      <li key={item.id}>
-                        {item.title} · {item.calendarName}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-1 text-xs text-slate-500">{t("app.calendar.conflictsHint")}</p>
-                </div>
-              )}
-            </div>
-          )}
+        {preview && (
+          <div className="rounded-lg border border-line bg-surface-2 p-4 text-sm text-fg-muted">
+            <p className="font-medium text-fg">{t("app.calendar.confirmTitle")}</p>
+            <p className="mt-2 text-fg">{preview.summary.title}</p>
+            <p className="mt-1 text-xs text-fg-subtle">{preview.summary.calendarName}</p>
+            <p className="mt-2 text-xs text-warning-text">{t("app.calendar.guestsNotify")}</p>
+            {(preview.summary.conflicts ?? []).length > 0 && (
+              <div className="mt-3 rounded-md border border-warning/25 bg-warning/10 p-3">
+                <p className="text-xs font-medium text-warning-text">{t("app.calendar.conflicts")}</p>
+                <ul className="mt-1 space-y-1 text-xs text-fg-muted">
+                  {(preview.summary.conflicts ?? []).map((item) => (
+                    <li key={item.id}>
+                      {item.title} · {item.calendarName}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1 text-xs text-fg-subtle">{t("app.calendar.conflictsHint")}</p>
+              </div>
+            )}
+          </div>
+        )}
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-slate-800 p-6">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900 disabled:opacity-60"
-          >
-            {t("app.common.cancel")}
-          </button>
-          {preview ? (
-            <button
-              type="button"
-              onClick={() => void runCommit()}
-              disabled={busy}
-              className={`flex h-10 items-center rounded-xl px-4 text-sm font-semibold text-white transition disabled:opacity-60 ${
-                mode === "delete" ? "bg-red-600 hover:bg-red-500" : "bg-blue-600 hover:bg-blue-500"
-              }`}
-            >
-              {busy ? t("app.common.saving") : t("app.calendar.confirmWrite")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void runPreview()}
-              disabled={busy || (mode !== "delete" && writable.length === 0)}
-              className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-            >
-              {busy ? t("app.common.saving") : t("app.calendar.reviewChange")}
-            </button>
-          )}
-        </div>
-      </aside>
-    </div>
+        {error && <Alert tone="danger">{error}</Alert>}
+      </div>
+    </Modal>
   );
 }

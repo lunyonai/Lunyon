@@ -1,8 +1,12 @@
 import { ArrowRight, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Logo from "./Logo";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { Alert } from "../../../components/ui/Alert";
+import { Button } from "../../../components/ui/Button";
+import { Field } from "../../../components/ui/Field";
+import { cardClass, cx, inputClass } from "../../../components/ui/styles";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocale } from "../../../i18n/LocaleProvider";
 import { forgotPasswordPath } from "../../../i18n/paths";
@@ -25,9 +29,43 @@ const item = {
   visible: { opacity: 1, y: 0 },
 };
 
+const iconClass =
+  "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle";
+const iconInputClass = cx(inputClass, "pl-9");
+const linkClass =
+  "rounded-sm font-medium text-primary-text underline-offset-4 transition-colors hover:underline " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+
+/** Google "G" brand mark, kept in its official colors in both themes. */
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="#4285F4"
+        d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.46a5.52 5.52 0 0 1-2.4 3.62v3h3.88c2.27-2.09 3.58-5.17 3.58-8.81Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.88-3.01c-1.07.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.95H1.28v3.11A12 12 0 0 0 12 24Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.29 14.28A7.2 7.2 0 0 1 4.91 12c0-.79.14-1.56.38-2.28V6.61H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.01-3.11Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.77c1.76 0 3.34.61 4.59 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0A12 12 0 0 0 1.28 6.61l4.01 3.11C6.23 6.88 8.88 4.77 12 4.77Z"
+      />
+    </svg>
+  );
+}
+
 export default function LoginForm() {
   const navigate = useNavigate();
   const { locale, t } = useLocale();
+  const nameId = useId();
+  const emailId = useId();
+  const passwordId = useId();
 
   const { login, loginWithGoogle, register } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -127,155 +165,128 @@ export default function LoginForm() {
     }
   }
 
-  const inputClassName =
-    "h-11 w-full rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-surface)] px-10 text-sm text-[var(--lunyo-text)] outline-none transition placeholder:text-slate-600 focus:border-[var(--lunyo-primary)]/50 focus:ring-2 focus:ring-[var(--lunyo-primary)]/10";
-
   return (
     <motion.div
       initial="hidden"
       animate="visible"
       variants={container}
-      className="w-full max-w-[22rem] px-8 py-10"
+      className="w-full max-w-sm px-4 py-10 sm:px-0"
     >
       <motion.div
         variants={item}
         transition={{ duration: 0.4, ease }}
-        className="mb-9"
+        className={cx(cardClass, "p-6 sm:p-8")}
       >
-        <Logo size="large" />
-      </motion.div>
+        <div className="mb-6">
+          <Logo size="medium" />
+        </div>
 
-      <motion.div
-        variants={item}
-        transition={{ duration: 0.4, ease }}
-        className="mb-7"
-      >
-        <h1 className="text-[1.75rem] font-semibold tracking-tight text-[var(--lunyo-text)]">
-          {isSignup ? t("login.createTitle") : t("login.welcome")}
-        </h1>
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">
+            {isSignup ? t("login.createTitle") : t("login.welcome")}
+          </h1>
 
-        <p className="mt-2.5 text-sm leading-6 text-[var(--lunyo-text-muted)]">
-          {isSignup ? t("login.createBody") : t("login.welcomeBody")}
-        </p>
-      </motion.div>
+          <p className="mt-2 text-sm leading-6 text-fg-muted">
+            {isSignup ? t("login.createBody") : t("login.welcomeBody")}
+          </p>
+        </div>
 
-      <motion.div variants={item} transition={{ duration: 0.4, ease }}>
-        <form onSubmit={handleSubmit} className="space-y-3.5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {isSignup && (
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-                {t("login.fullName")}
-              </span>
-
+            <Field label={t("login.fullName")} htmlFor={nameId}>
               <div className="relative">
-                <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <UserRound className={iconClass} aria-hidden="true" />
 
                 <input
+                  id={nameId}
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t("login.fullNamePlaceholder")}
-                  className={inputClassName}
+                  className={iconInputClass}
                 />
               </div>
-            </label>
+            </Field>
           )}
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-                {t("login.email")}
-            </span>
-
+          <Field label={t("login.email")} htmlFor={emailId}>
             <div className="relative">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Mail className={iconClass} aria-hidden="true" />
 
               <input
+                id={emailId}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 autoComplete="email"
                 required
-                className={inputClassName}
+                className={iconInputClass}
               />
             </div>
-          </label>
+          </Field>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-                {t("login.password")}
-            </span>
-
+          <Field label={t("login.password")} htmlFor={passwordId}>
             <div className="relative">
-              <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <LockKeyhole className={iconClass} aria-hidden="true" />
 
               <input
+                id={passwordId}
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder={t("login.passwordPlaceholder")}
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 required
-                className={inputClassName}
+                className={iconInputClass}
               />
             </div>
-          </label>
+          </Field>
 
           {!isSignup && (
-            <div className="flex justify-end">
-              <Link
-                to={forgotPasswordPath(locale)}
-                className="inline-flex min-h-8 items-center text-sm font-medium text-[var(--lunyo-primary)] underline-offset-4 transition hover:underline hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--lunyo-primary)]"
-              >
+            <div className="-mt-1 flex justify-end">
+              <Link to={forgotPasswordPath(locale)} className={cx(linkClass, "text-sm")}>
                 {t("login.forgotPassword")}
               </Link>
             </div>
           )}
 
-          {visibleError && (
-              <div
-                role="alert"
-                className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300"
-              >
-                {visibleError}
-              </div>
-            )}
+          {visibleError && <Alert tone="danger">{visibleError}</Alert>}
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] bg-[var(--lunyo-primary)] text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          <Button type="submit" variant="primary" size="lg" block disabled={busy} loading={loading}>
             {busy
               ? t("login.loading")
               : isSignup
                 ? t("login.createAccount")
                 : t("login.signIn")}
-            {!busy && <ArrowRight className="h-4 w-4" />}
-          </button>
+            {!busy && <ArrowRight aria-hidden="true" />}
+          </Button>
         </form>
 
         <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-[var(--lunyo-border)]" />
-          <span className="text-[11px] text-slate-600">{t("login.or")}</span>
-          <div className="h-px flex-1 bg-[var(--lunyo-border)]" />
+          <div className="h-px flex-1 bg-line" />
+          <span className="text-xs text-fg-subtle">{t("login.or")}</span>
+          <div className="h-px flex-1 bg-line" />
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="lg"
+          block
           onClick={() => void handleGoogle()}
           disabled={busy}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-surface)]/60 text-sm font-medium text-[var(--lunyo-text)] transition hover:bg-[var(--lunyo-surface)] disabled:cursor-not-allowed disabled:opacity-50"
+          loading={googleLoading}
         >
+          {!googleLoading && <GoogleIcon />}
           {googleLoading ? t("login.loading") : t("login.google")}
-        </button>
+        </Button>
 
-        <p className="mt-7 text-center text-sm text-[var(--lunyo-text-muted)]">
+        <p className="mt-6 text-center text-sm text-fg-muted">
           {isSignup ? t("login.alreadyHave") : t("login.newTo")}{" "}
           <button
             type="button"
             onClick={() => setMode(isSignup ? "login" : "signup")}
-            className="font-medium text-[var(--lunyo-primary)] transition hover:brightness-125"
+            className={linkClass}
           >
             {isSignup ? t("login.signIn") : t("login.createAccount")}
           </button>

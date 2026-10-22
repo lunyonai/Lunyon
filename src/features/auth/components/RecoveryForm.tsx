@@ -2,6 +2,7 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type ClipboardEvent,
@@ -10,6 +11,16 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import Logo from "./Logo";
+import { Alert } from "../../../components/ui/Alert";
+import { Button } from "../../../components/ui/Button";
+import { Field } from "../../../components/ui/Field";
+import {
+  buttonClass,
+  cardClass,
+  cx,
+  hintClass,
+  inputClass,
+} from "../../../components/ui/styles";
 import { useAuth } from "../../../hooks/useAuth";
 import { useLocale } from "../../../i18n/LocaleProvider";
 import { loginPath, resetPasswordPath, signupPath } from "../../../i18n/paths";
@@ -35,6 +46,20 @@ const item = {
   hidden: { opacity: 0, y: 8 },
   visible: { opacity: 1, y: 0 },
 };
+
+const iconClass =
+  "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle";
+const iconInputClass = cx(inputClass, "pl-9");
+const passwordInputClass = cx(inputClass, "pl-9 pr-10");
+const revealButtonClass =
+  "absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-subtle " +
+  "transition-colors hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
+const digitClass =
+  "h-12 w-10 rounded-lg border border-line bg-surface text-center text-lg font-medium tabular-nums text-fg shadow-card " +
+  "outline-none transition focus:border-primary focus:ring-3 focus:ring-primary/15";
+const linkClass =
+  "rounded-sm font-medium text-primary-text underline-offset-4 transition-colors hover:underline " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
 
 type Step = "email" | "code" | "password" | "success";
 
@@ -124,6 +149,9 @@ export default function RecoveryForm() {
   const [notice, setNotice] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
+  const emailId = useId();
+  const passwordId = useId();
+  const confirmId = useId();
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -137,9 +165,6 @@ export default function RecoveryForm() {
       setStep("password");
     }
   }, [recovering, step]);
-
-  const inputClassName =
-    "h-11 w-full rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-surface)] px-10 text-sm text-[var(--lunyo-text)] outline-none transition placeholder:text-slate-600 focus:border-[var(--lunyo-primary)]/50 focus:ring-2 focus:ring-[var(--lunyo-primary)]/10";
 
   async function requestReset() {
     const redirectTo = `${window.location.origin}${resetPasswordPath(locale)}`;
@@ -327,29 +352,29 @@ export default function RecoveryForm() {
       initial="hidden"
       animate="visible"
       variants={container}
-      className="w-full max-w-[22rem] px-8 py-10"
+      className="w-full max-w-sm px-4 py-10 sm:px-0"
     >
-      <motion.div variants={item} transition={{ duration: 0.4, ease }} className="mb-9">
-        <Logo size="large" />
-      </motion.div>
+      <motion.div
+        variants={item}
+        transition={{ duration: 0.4, ease }}
+        className={cx(cardClass, "p-6 sm:p-8")}
+      >
+        <div className="mb-6">
+          <Logo size="medium" />
+        </div>
 
-      <motion.div variants={item} transition={{ duration: 0.4, ease }} className="mb-7">
-        <h1 className="text-[1.75rem] font-semibold tracking-tight text-[var(--lunyo-text)]">
-          {title}
-        </h1>
-        <p className="mt-2.5 text-sm leading-6 text-[var(--lunyo-text-muted)]">{body}</p>
-      </motion.div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
+          <p className="mt-2 text-sm leading-6 text-fg-muted">{body}</p>
+        </div>
 
-      <motion.div variants={item} transition={{ duration: 0.4, ease }}>
         {step === "email" && (
-          <form onSubmit={submitEmail} className="space-y-3.5">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-                {t("login.email")}
-              </span>
+          <form onSubmit={submitEmail} className="space-y-4">
+            <Field label={t("login.email")} htmlFor={emailId}>
               <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Mail className={iconClass} aria-hidden="true" />
                 <input
+                  id={emailId}
                   type="email"
                   value={email}
                   onChange={(event) => {
@@ -362,45 +387,35 @@ export default function RecoveryForm() {
                   required
                   aria-invalid={Boolean(error)}
                   aria-describedby={error ? "recovery-email-error" : undefined}
-                  className={inputClassName}
+                  className={iconInputClass}
                 />
               </div>
-            </label>
+            </Field>
             {error && (
-              <div
-                id="recovery-email-error"
-                className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300"
-              >
-                <p>{error}</p>
-                {notRegistered && (
-                  <p className="mt-1.5">
-                    {t("recovery.notRegisteredHint")}{" "}
-                    <Link
-                      to={signupPath(locale)}
-                      className="font-medium text-[var(--lunyo-primary)] transition hover:brightness-125"
-                    >
-                      {t("recovery.createAccount")}
-                    </Link>
-                  </p>
-                )}
+              <div id="recovery-email-error">
+                <Alert tone="danger">
+                  <p>{error}</p>
+                  {notRegistered && (
+                    <p className="mt-1.5 text-fg-muted">
+                      {t("recovery.notRegisteredHint")}{" "}
+                      <Link to={signupPath(locale)} className={linkClass}>
+                        {t("recovery.createAccount")}
+                      </Link>
+                    </p>
+                  )}
+                </Alert>
               </div>
             )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] bg-[var(--lunyo-primary)] text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            <Button type="submit" variant="primary" size="lg" block loading={loading}>
               {loading ? t("login.loading") : t("recovery.continue")}
-              {!loading && <ArrowRight className="h-4 w-4" />}
-            </button>
+              {!loading && <ArrowRight aria-hidden="true" />}
+            </Button>
           </form>
         )}
 
         {step === "code" && (
-          <form onSubmit={submitCode} className="space-y-3.5">
-            {notice && (
-              <p className="text-sm leading-6 text-[var(--lunyo-text-muted)]">{notice}</p>
-            )}
+          <form onSubmit={submitCode} className="space-y-4">
+            {notice && <Alert tone="info">{notice}</Alert>}
             <fieldset>
               <legend className="sr-only">{t("recovery.codeLabel")}</legend>
               <div className="flex justify-between gap-1.5">
@@ -418,69 +433,59 @@ export default function RecoveryForm() {
                     onChange={(event) => onDigitChange(index, event.target.value)}
                     onKeyDown={(event) => onDigitKeyDown(index, event)}
                     onPaste={onDigitPaste}
-                    className="h-12 w-10 rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-surface)] text-center text-lg text-[var(--lunyo-text)] outline-none transition focus:border-[var(--lunyo-primary)]/50 focus:ring-2 focus:ring-[var(--lunyo-primary)]/10"
+                    className={digitClass}
                   />
                 ))}
               </div>
             </fieldset>
-            {error && (
-              <div className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300">
-                {error}
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-[var(--lunyo-radius)] bg-[var(--lunyo-primary)] text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            {error && <Alert tone="danger">{error}</Alert>}
+            <Button type="submit" variant="primary" size="lg" block loading={loading}>
               {loading ? t("login.loading") : t("recovery.verify")}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="lg"
+              block
               onClick={() => void resendCode()}
               disabled={loading || cooldown > 0}
-              className="flex h-11 w-full items-center justify-center rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] bg-[var(--lunyo-surface)]/60 text-sm font-medium text-[var(--lunyo-text)] transition hover:bg-[var(--lunyo-surface)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {cooldown > 0
                 ? t("recovery.resendWait", { seconds: cooldown })
                 : t("recovery.resend")}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
+              block
               onClick={() => {
                 setStep("email");
                 setError("");
                 setNotice("");
                 setCodeVerified(false);
               }}
-              className="w-full text-center text-sm text-[var(--lunyo-text-muted)] transition hover:text-[var(--lunyo-text)]"
             >
               {t("recovery.back")}
-            </button>
+            </Button>
           </form>
         )}
 
         {step === "password" && (
-          <form onSubmit={submitPassword} className="space-y-3.5">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-                {t("recovery.newPassword")}
-              </span>
+          <form onSubmit={submitPassword} className="space-y-4">
+            <Field label={t("recovery.newPassword")} htmlFor={passwordId}>
               <div className="relative">
-                <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <LockKeyhole className={iconClass} aria-hidden="true" />
                 <input
+                  id={passwordId}
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="new-password"
                   minLength={8}
                   required
-                  className={`${inputClassName} pr-10`}
+                  className={passwordInputClass}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-[var(--lunyo-text)]"
+                  className={revealButtonClass}
                   aria-label={
                     showPassword ? t("recovery.hidePassword") : t("recovery.showPassword")
                   }
@@ -488,26 +493,24 @@ export default function RecoveryForm() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-[var(--lunyo-text)]/90">
-                {t("recovery.confirmPassword")}
-              </span>
+            </Field>
+            <Field label={t("recovery.confirmPassword")} htmlFor={confirmId}>
               <div className="relative">
-                <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <LockKeyhole className={iconClass} aria-hidden="true" />
                 <input
+                  id={confirmId}
                   type={showConfirm ? "text" : "password"}
                   value={confirm}
                   onChange={(event) => setConfirm(event.target.value)}
                   autoComplete="new-password"
                   minLength={8}
                   required
-                  className={`${inputClassName} pr-10`}
+                  className={passwordInputClass}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirm((value) => !value)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition hover:text-[var(--lunyo-text)]"
+                  className={revealButtonClass}
                   aria-label={
                     showConfirm ? t("recovery.hidePassword") : t("recovery.showPassword")
                   }
@@ -515,22 +518,12 @@ export default function RecoveryForm() {
                   {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </label>
-            <p className="text-xs text-[var(--lunyo-text-muted)]">
-              {t("recovery.passwordHint")}
-            </p>
-            {error && (
-              <div className="rounded-[var(--lunyo-radius)] border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-300">
-                {error}
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex h-11 w-full items-center justify-center rounded-[var(--lunyo-radius)] bg-[var(--lunyo-primary)] text-sm font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            </Field>
+            <p className={hintClass}>{t("recovery.passwordHint")}</p>
+            {error && <Alert tone="danger">{error}</Alert>}
+            <Button type="submit" variant="primary" size="lg" block loading={loading}>
               {loading ? t("login.loading") : t("recovery.updatePassword")}
-            </button>
+            </Button>
           </form>
         )}
 
@@ -538,7 +531,7 @@ export default function RecoveryForm() {
           <div className="space-y-4">
             <Link
               to={loginPath(locale)}
-              className="flex h-11 w-full items-center justify-center rounded-[var(--lunyo-radius)] bg-[var(--lunyo-primary)] text-sm font-semibold text-white transition hover:brightness-110"
+              className={buttonClass({ variant: "primary", size: "lg", block: true })}
             >
               {t("recovery.backToSignIn")}
             </Link>
@@ -546,12 +539,9 @@ export default function RecoveryForm() {
         )}
 
         {step !== "success" && (
-          <p className="mt-7 text-center text-sm text-[var(--lunyo-text-muted)]">
+          <p className="mt-6 text-center text-sm text-fg-muted">
             {t("login.alreadyHave")}{" "}
-            <Link
-              to={loginPath(locale)}
-              className="font-medium text-[var(--lunyo-primary)] transition hover:brightness-125"
-            >
+            <Link to={loginPath(locale)} className={linkClass}>
               {t("login.signIn")}
             </Link>
           </p>

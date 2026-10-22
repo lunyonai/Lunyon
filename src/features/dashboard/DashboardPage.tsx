@@ -1,11 +1,13 @@
-import { X } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
+import { Alert } from "../../components/ui/Alert";
 import AppShell from "../../layouts/AppShell";
 import { useLocale } from "../../i18n/LocaleProvider";
 import DashboardHeader from "./components/DashboardHeader";
 import StatsGrid from "./components/StatsGrid.tsx";
 import ActivityFeed from "./components/ActivityFeed.tsx";
 import SystemStatus from "./components/SystemStatus.tsx";
+import ActivityChart from "./components/ActivityChart";
+import QuickActions from "./components/QuickActions";
 
 function PaymentNotice() {
   const { t } = useLocale();
@@ -22,24 +24,13 @@ function PaymentNotice() {
   }
 
   return (
-    <div
-      role="status"
-      className={`flex items-start justify-between gap-3 rounded-2xl border p-4 text-sm ${
-        paid
-          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-          : "border-amber-500/20 bg-amber-500/10 text-amber-300"
-      }`}
+    <Alert
+      tone={paid ? "success" : "warning"}
+      onDismiss={dismiss}
+      dismissLabel={t("app.common.close")}
     >
-      <p>{t(paid ? "app.billing.paidNotice" : "app.billing.canceledNotice")}</p>
-      <button
-        type="button"
-        aria-label={t("app.common.close")}
-        onClick={dismiss}
-        className="shrink-0 rounded-md p-1 opacity-70 hover:opacity-100"
-      >
-        <X className="h-4 w-4" />
-      </button>
-    </div>
+      {t(paid ? "app.billing.paidNotice" : "app.billing.canceledNotice")}
+    </Alert>
   );
 }
 
@@ -47,21 +38,22 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <section className="space-y-8">
+      <section className="space-y-6">
         <PaymentNotice />
 
         <DashboardHeader />
 
         <StatsGrid />
 
-        <div className="grid gap-6 xl:grid-cols-5">
-          <div className="xl:col-span-3">
+        <QuickActions />
+
+        <div className="grid items-start gap-6 xl:grid-cols-3">
+          <div className="space-y-6 xl:col-span-2">
+            <ActivityChart />
             <ActivityFeed />
           </div>
 
-          <div className="xl:col-span-2">
-            <SystemStatus />
-          </div>
+          <SystemStatus />
         </div>
       </section>
     </AppShell>

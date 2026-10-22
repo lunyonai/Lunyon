@@ -3,6 +3,7 @@ import ActivityItem from "./ActivityItem";
 import PreviewMetric from "./PreviewMetric";
 import TimeTrend from "./TimeTrend";
 import WorkflowPreview from "./WorkflowPreview";
+import { cardClass, cx } from "../../../components/ui/styles";
 import { useLocale } from "../../../i18n/LocaleProvider";
 
 const fadeUp = {
@@ -38,25 +39,16 @@ export default function HeroPreview() {
           className="flex items-center justify-between"
         >
           <div>
-            <p className="text-sm font-medium text-[var(--lunyo-text)]">
-              {t("preview.workspace")}
-            </p>
-            <p className="mt-0.5 text-xs text-[var(--lunyo-text-muted)]">
-              {t("preview.today")}
-            </p>
+            <p className="text-sm font-semibold text-fg">{t("preview.workspace")}</p>
+            <p className="mt-0.5 text-xs text-fg-subtle">{t("preview.today")}</p>
           </div>
 
-          <div
-            className="flex items-center gap-2 rounded-md border border-[var(--lunyo-border)] px-2.5 py-1.5"
-            style={{ backgroundColor: "var(--lunyo-surface)" }}
-          >
+          <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 shadow-card">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--lunyo-primary)]/50" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--lunyo-primary)]" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/50" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
             </span>
-            <span className="text-[11px] font-medium text-[var(--lunyo-text-muted)]">
-              {t("preview.working")}
-            </span>
+            <span className="text-xs font-medium text-fg-muted">{t("preview.working")}</span>
           </div>
         </motion.header>
 
@@ -65,25 +57,20 @@ export default function HeroPreview() {
           animate="visible"
           variants={fadeUp}
           transition={{ duration: 0.45, delay: 0.06, ease }}
-          className="rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] p-5"
-          style={{ backgroundColor: "var(--lunyo-surface)" }}
+          className={cx(cardClass, "p-5 sm:p-6")}
         >
-          <p className="text-[11px] font-medium tracking-[0.08em] text-[var(--lunyo-text-muted)]">
-            {t("preview.timeReclaimed")}
-          </p>
+          <p className="text-sm font-medium text-fg-muted">{t("preview.timeReclaimed")}</p>
 
           <motion.p
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.18, ease }}
-            className="mt-2 text-5xl font-semibold tracking-tight text-[var(--lunyo-text)] xl:text-6xl"
+            className="mt-3 text-2xl font-semibold tracking-tight tabular-nums text-fg"
           >
             1h 42m
           </motion.p>
 
-          <p className="mt-2 text-xs text-[var(--lunyo-success)]/80">
-            {t("preview.vsYesterday")}
-          </p>
+          <p className="mt-1 text-xs text-success-text">{t("preview.vsYesterday")}</p>
 
           <TimeTrend />
         </motion.section>
@@ -100,11 +87,7 @@ export default function HeroPreview() {
           className="grid grid-cols-3 gap-3"
         >
           {supportingMetrics.map((metric) => (
-            <motion.div
-              key={metric.label}
-              variants={fadeUp}
-              transition={{ duration: 0.35, ease }}
-            >
+            <motion.div key={metric.label} variants={fadeUp} transition={{ duration: 0.35, ease }}>
               <PreviewMetric label={metric.label} value={metric.value} />
             </motion.div>
           ))}
@@ -117,13 +100,8 @@ export default function HeroPreview() {
           transition={{ duration: 0.4, delay: 0.3, ease }}
           className="grid gap-3 xl:grid-cols-5"
         >
-          <section
-            className="rounded-[var(--lunyo-radius)] border border-[var(--lunyo-border)] p-3.5 xl:col-span-3"
-            style={{ backgroundColor: "var(--lunyo-surface)" }}
-          >
-            <p className="text-[11px] font-medium tracking-[0.06em] text-[var(--lunyo-text-muted)]">
-              {t("preview.recentActivity")}
-            </p>
+          <section className={cx(cardClass, "p-4 xl:col-span-3")}>
+            <p className="text-sm font-semibold text-fg">{t("preview.recentActivity")}</p>
             <motion.ul
               initial="hidden"
               animate="visible"
@@ -133,14 +111,10 @@ export default function HeroPreview() {
                   transition: { staggerChildren: 0.08, delayChildren: 0.38 },
                 },
               }}
-              className="mt-2"
+              className="mt-2 divide-y divide-line"
             >
               {recentActivity.map((item) => (
-                <ActivityItem
-                  key={item.title}
-                  title={item.title}
-                  time={item.time}
-                />
+                <ActivityItem key={item.title} title={item.title} time={item.time} />
               ))}
             </motion.ul>
           </section>

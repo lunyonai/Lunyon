@@ -15,7 +15,10 @@ import Logo from "../features/auth/components/Logo";
 import LanguageSwitcher from "../features/landing/LanguageSwitcher";
 import NotificationsPopover from "../features/notifications/NotificationsPopover";
 import { NavLink, useLocation } from "react-router-dom";
+import { IconButton } from "../components/ui/Button";
+import { cx, navItemClass } from "../components/ui/styles";
 import { useLocale } from "../i18n/LocaleProvider";
+import ThemeToggle from "../theme/ThemeToggle";
 import UserMenu from "./UserMenu";
 
 type AppShellProps = {
@@ -32,73 +35,32 @@ const navigation = [
   { key: "mail", icon: Mail, to: "/mail" },
 ] as const;
 
-function headerCopy(
-  pathname: string,
-  t: (path: string) => string,
-): { title: string; subtitle: string } {
-  if (pathname.startsWith("/employees/") && pathname !== "/employees") {
-    return {
-      title: t("app.employees.configureTitle"),
-      subtitle: t("app.employees.configureSubtitle"),
-    };
-  }
-  if (pathname === "/employees") {
-    return {
-      title: t("app.nav.employees"),
-      subtitle: t("app.employees.subtitle"),
-    };
-  }
-  if (pathname === "/prompts") {
-    return {
-      title: t("app.nav.prompts"),
-      subtitle: t("app.prompts.subtitle"),
-    };
-  }
-  if (pathname === "/workflows") {
-    return {
-      title: t("app.nav.workflows"),
-      subtitle: t("app.workflows.subtitle"),
-    };
-  }
-  if (pathname === "/calendar") {
-    return {
-      title: t("app.nav.calendar"),
-      subtitle: t("app.calendar.subtitle"),
-    };
-  }
-  if (pathname === "/assistant") {
-    return {
-      title: t("app.nav.assistant"),
-      subtitle: t("app.agent.subtitle"),
-    };
-  }
-  if (pathname === "/mail") {
-    return {
-      title: t("app.nav.mail"),
-      subtitle: t("app.mail.subtitle"),
-    };
-  }
-  if (pathname === "/settings") {
-    return {
-      title: t("app.nav.settings"),
-      subtitle: t("app.settings.subtitle"),
-    };
-  }
-  return {
-    title: t("app.nav.overview"),
-    subtitle: t("app.nav.overviewSubtitle"),
-  };
+/** Sidebar item with a brand-colored indicator bar on the active route. */
+function sidebarItemClass(active: boolean) {
+  return cx(
+    navItemClass(active),
+    active &&
+      "before:absolute before:inset-y-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-primary",
+  );
+}
+
+/** Section name for the top bar; each page renders its own title and description. */
+function sectionTitle(pathname: string, t: (path: string) => string): string {
+  if (pathname.startsWith("/employees")) return t("app.nav.employees");
+  if (pathname === "/prompts") return t("app.nav.prompts");
+  if (pathname === "/workflows") return t("app.nav.workflows");
+  if (pathname === "/calendar") return t("app.nav.calendar");
+  if (pathname === "/assistant") return t("app.nav.assistant");
+  if (pathname === "/mail") return t("app.nav.mail");
+  if (pathname === "/settings") return t("app.nav.settings");
+  return t("app.nav.overview");
 }
 
 export default function AppShell({ children }: AppShellProps) {
   const { t } = useLocale();
   const { pathname } = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const header = headerCopy(pathname, t);
-
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
+  const section = sectionTitle(pathname, t);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -108,48 +70,40 @@ export default function AppShell({ children }: AppShellProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const closeSidebar = () => setSidebarOpen(false);
+
   const nav = (
     <>
-      <nav className="flex-1 space-y-1 px-3 py-6">
-        <p className="px-3 pb-3 text-xs font-semibold tracking-wider text-slate-500">
+      <nav className="flex-1 overflow-y-auto px-3 py-5">
+        <p className="px-2.5 pb-2 text-[11px] font-semibold uppercase tracking-wider text-fg-subtle">
           {t("app.nav.workspace")}
         </p>
 
-        {navigation.map((item) => {
-          const Icon = item.icon;
-          const label = t(`app.nav.${item.key}`);
-
-          return (
-            <NavLink
-              key={item.key}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-blue-500/10 text-blue-300"
-                    : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
-                }`
-              }
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </NavLink>
-          );
-        })}
+        <div className="space-y-0.5">
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.key}
+                to={item.to}
+                onClick={closeSidebar}
+                className={({ isActive }) => sidebarItemClass(isActive)}
+              >
+                <Icon aria-hidden="true" />
+                {t(`app.nav.${item.key}`)}
+              </NavLink>
+            );
+          })}
+        </div>
       </nav>
 
-      <div className="border-t border-slate-800 p-3">
+      <div className="space-y-1 border-t border-line p-3">
         <NavLink
           to="/settings"
-          className={({ isActive }) =>
-            `flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-              isActive
-                ? "bg-blue-500/10 text-blue-300"
-                : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
-            }`
-          }
+          onClick={closeSidebar}
+          className={({ isActive }) => sidebarItemClass(isActive)}
         >
-          <Settings className="h-4 w-4 shrink-0" />
+          <Settings aria-hidden="true" />
           {t("app.nav.settings")}
         </NavLink>
         <UserMenu />
@@ -157,12 +111,26 @@ export default function AppShell({ children }: AppShellProps) {
     </>
   );
 
+  const brand = (
+    <div className="flex h-16 shrink-0 items-center px-5">
+      <Logo size="small" />
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-800 bg-slate-950 lg:flex lg:flex-col">
-        <div className="flex h-20 items-center border-b border-slate-800 px-6">
-          <Logo size="small" />
-        </div>
+    <div className="relative min-h-screen bg-canvas text-fg">
+      {/* Ambient brand glow behind the content area. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-x-0 top-0 h-[520px] lg:left-64"
+        style={{
+          backgroundImage:
+            "radial-gradient(ellipse 60% 70% at 15% 0%, var(--ui-glow-1), transparent 70%), radial-gradient(ellipse 50% 60% at 85% 0%, var(--ui-glow-2), transparent 70%)",
+        }}
+      />
+
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-line bg-surface lg:flex">
+        {brand}
         {nav}
       </aside>
 
@@ -171,53 +139,48 @@ export default function AppShell({ children }: AppShellProps) {
           <button
             type="button"
             aria-label={t("app.common.close")}
-            onClick={() => setSidebarOpen(false)}
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            onClick={closeSidebar}
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
           />
-          <aside className="relative flex h-full w-64 flex-col border-r border-slate-800 bg-slate-950">
-            <div className="flex h-20 items-center justify-between border-b border-slate-800 px-6">
-              <Logo size="small" />
-              <button
-                type="button"
-                aria-label={t("app.common.close")}
-                onClick={() => setSidebarOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400"
-              >
-                <X className="h-4 w-4" />
-              </button>
+          <aside className="relative flex h-full w-72 flex-col border-r border-line bg-surface shadow-overlay">
+            <div className="flex items-center justify-between pr-3">
+              {brand}
+              <IconButton aria-label={t("app.common.close")} size="sm" onClick={closeSidebar}>
+                <X />
+              </IconButton>
             </div>
             {nav}
           </aside>
         </div>
       )}
 
-      <div className="lg:pl-64">
-        <header className="flex h-20 items-center justify-between gap-3 border-b border-slate-800 px-5 sm:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
+      <div className="relative lg:pl-64">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-line bg-canvas/75 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2">
+            <IconButton
               aria-label={t("app.nav.openSidebar")}
               onClick={() => setSidebarOpen(true)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-800 text-slate-400 lg:hidden"
+              className="-ml-1.5 lg:hidden"
             >
-              <PanelLeft className="h-4 w-4" />
-            </button>
-
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-slate-200">
-                {header.title}
-              </p>
-              <p className="truncate text-xs text-slate-500">{header.subtitle}</p>
-            </div>
+              <PanelLeft />
+            </IconButton>
+            <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
+              <span className="hidden text-fg-subtle sm:inline">{t("app.nav.personalWorkspace")}</span>
+              <span className="hidden text-fg-placeholder sm:inline" aria-hidden="true">/</span>
+              <span className="truncate font-medium text-fg">{section}</span>
+            </nav>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
-            <LanguageSwitcher />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <div className="mr-2 hidden sm:block">
+              <LanguageSwitcher />
+            </div>
+            <ThemeToggle />
             <NotificationsPopover />
           </div>
         </header>
 
-        <main className="p-5 sm:p-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</main>
       </div>
     </div>
   );

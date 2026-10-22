@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { cx } from "../../../components/ui/styles";
 
 type TimeTrendProps = {
   days?: { label: string; minutes: number; current?: boolean }[];
@@ -22,10 +23,7 @@ export default function TimeTrend({ days = defaultDays }: TimeTrendProps) {
           const heightPercent = Math.max((day.minutes / maxMinutes) * 100, 12);
 
           return (
-            <div
-              key={day.label}
-              className="flex flex-1 flex-col items-center gap-2"
-            >
+            <div key={day.label} className="flex flex-1 flex-col items-center gap-2">
               <div className="flex h-12 w-full items-end justify-center">
                 <motion.div
                   initial={{ height: 0, opacity: 0.4 }}
@@ -35,26 +33,22 @@ export default function TimeTrend({ days = defaultDays }: TimeTrendProps) {
                     delay: 0.35 + index * 0.06,
                     ease: [0.22, 1, 0.36, 1],
                   }}
-                  className={`w-full max-w-6 rounded-sm ${
-                    day.current
-                      ? "bg-[var(--lunyo-primary)]/70"
-                      : "bg-slate-700/70"
-                  }`}
+                  className={cx(
+                    "w-full max-w-6 rounded-sm",
+                    day.current ? "bg-primary" : "bg-surface-3",
+                  )}
                 />
               </div>
               <div className="text-center">
                 <p
-                  className={`text-[10px] font-medium ${
-                    day.current
-                      ? "text-[var(--lunyo-primary)]/80"
-                      : "text-[var(--lunyo-text-muted)]"
-                  }`}
+                  className={cx(
+                    "text-xs font-medium",
+                    day.current ? "text-primary-text" : "text-fg-muted",
+                  )}
                 >
                   {day.label}
                 </p>
-                <p className="mt-0.5 text-[10px] text-slate-600">
-                  {day.minutes}m
-                </p>
+                <p className="mt-0.5 text-xs tabular-nums text-fg-subtle">{day.minutes}m</p>
               </div>
             </div>
           );

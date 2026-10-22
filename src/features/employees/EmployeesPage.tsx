@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   Bot,
   CheckCircle2,
@@ -8,6 +8,16 @@ import {
   X,
 } from "lucide-react";
 import AppShell from "../../layouts/AppShell";
+import { Alert } from "../../components/ui/Alert";
+import { Badge } from "../../components/ui/Badge";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Card, CardHeader } from "../../components/ui/Card";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Field } from "../../components/ui/Field";
+import { PageHeader } from "../../components/ui/PageHeader";
+import type { TileTone } from "../../components/ui/IconTile";
+import { StatCard } from "../../components/ui/StatCard";
+import { cx, skeletonClass, textareaClass } from "../../components/ui/styles";
 import { useActivity } from "../activity/ActivityContext";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { api } from "../../lib/api";
@@ -16,7 +26,7 @@ import RunResultCard, { RunErrorNotice } from "../../components/RunResultCard";
 import { useEmployees } from "./EmployeesContext";
 import EmployeeActionsMenu from "./EmployeeActionsMenu";
 import EmployeeFormPanel from "./EmployeeFormPanel";
-import { employeeIconMap, resolveEmployeeCopy, statusClass } from "./employeeView";
+import { employeeIconMap, resolveEmployeeCopy, statusClass, statusTone } from "./employeeView";
 
 export default function EmployeesPage() {
   const { t, locale } = useLocale();
@@ -28,6 +38,8 @@ export default function EmployeesPage() {
   const [result, setResult] = useState<string | null>(null);
   const [runError, setRunError] = useState<{ key: string; needsSettings: boolean } | null>(null);
   const { stats, refresh: refreshActivity } = useActivity();
+  const panelTitleId = useId();
+  const taskFieldId = useId();
 
   const views = useMemo(
     () =>
@@ -47,6 +59,7 @@ export default function EmployeesPage() {
               : "app.employees.statusPaused",
           ),
           statusClass: statusClass(employee.status),
+          statusTone: statusTone(employee.status),
           completed: t("app.employees.tasksDone", {
             count: stats?.byRef[`employee:${employee.id}`] ?? 0,
           }),
@@ -103,171 +116,155 @@ export default function EmployeesPage() {
     }
   }
 
+  const summary: Array<{ key: string; label: string; value: string | number; icon: typeof Bot; tone: TileTone }> = [
+    {
+      key: "count",
+      label: t("app.employees.countLabel"),
+      value: String(employees.length),
+      icon: Bot,
+      tone: "violet",
+    },
+    {
+      key: "tasks",
+      label: t("app.employees.tasksCompleted"),
+      value: taskCount,
+      icon: CheckCircle2,
+      tone: "emerald",
+    },
+    {
+      key: "working",
+      label: t("app.employees.workingNow"),
+      value: workingCount,
+      icon: Sparkles,
+      tone: "primary",
+    },
+    {
+      key: "roles",
+      label: t("app.employees.rolesCovered"),
+      value: roleCount,
+      icon: UserRound,
+      tone: "amber",
+    },
+  ];
+
   return (
     <AppShell>
-      <section>
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-sm font-medium text-blue-400">{t("app.employees.kicker")}</p>
+      <section className="space-y-6">
+        <PageHeader
+          icon={Bot}
+          tone="violet"
+          title={t("app.employees.title")}
+          description={t("app.employees.subtitle")}
+          actions={
+            <Button variant="primary" onClick={() => setCreating(true)}>
+              <Plus />
+              {t("app.employees.add")}
+            </Button>
+          }
+        />
 
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-              {t("app.employees.title")}
-            </h1>
-
-            <p className="mt-2 text-sm text-slate-400">
-              {t("app.employees.subtitle")}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500"
-          >
-            <Plus className="h-4 w-4" />
-            {t("app.employees.add")}
-          </button>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          {summary.map((card) => (
+            <StatCard key={card.key} label={card.label} value={card.value} icon={card.icon} tone={card.tone} />
+          ))}
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
-              <Bot className="h-5 w-5 text-blue-400" />
+        <section className="space-y-4">
+          <CardHeader
+            title={t("app.employees.teamTitle")}
+            description={t("app.employees.teamSubtitle")}
+            actions={
+              <Badge className="tabular-nums">
+                {t("app.employees.activeCount", { count: activeCount })}
+              </Badge>
+            }
+          />
+
+          {loading && (
+            <div className="grid gap-4 md:grid-cols-2" aria-busy="true">
+              <span className="sr-only">{t("app.common.loading")}</span>
+              {[0, 1].map((item) => (
+                <div
+                  key={item}
+                  className={cx(skeletonClass, "h-52 rounded-xl")}
+                  aria-hidden="true"
+                />
+              ))}
             </div>
+          )}
 
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              {String(employees.length).padStart(2, "0")}
-            </p>
+          {!loading && error && <Alert tone="danger">{t("app.employees.loadError")}</Alert>}
 
-            <p className="mt-1 text-sm text-slate-400">{t("app.employees.countLabel")}</p>
-          </article>
+          {!loading && !error && employees.length === 0 && (
+            <Card padded={false}>
+              <EmptyState tone="violet"
+                icon={Bot}
+                title={t("app.employees.emptyTeam")}
+                action={
+                  <Button variant="primary" onClick={() => setCreating(true)}>
+                    <Plus />
+                    {t("app.employees.add")}
+                  </Button>
+                }
+              />
+            </Card>
+          )}
 
-          <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-            </div>
+          {views.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {views.map((item) => {
+                const Icon = item.icon;
 
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              {taskCount}
-            </p>
-
-            <p className="mt-1 text-sm text-slate-400">{t("app.employees.tasksCompleted")}</p>
-          </article>
-
-          <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
-              <Sparkles className="h-5 w-5 text-violet-400" />
-            </div>
-
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              {workingCount}
-            </p>
-
-            <p className="mt-1 text-sm text-slate-400">{t("app.employees.workingNow")}</p>
-          </article>
-
-          <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10">
-              <UserRound className="h-5 w-5 text-amber-400" />
-            </div>
-
-            <p className="mt-5 text-3xl font-semibold tracking-tight text-white">
-              {roleCount}
-            </p>
-
-            <p className="mt-1 text-sm text-slate-400">{t("app.employees.rolesCovered")}</p>
-          </article>
-        </div>
-
-        <section className="mt-8">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-base font-semibold text-white">
-                {t("app.employees.teamTitle")}
-              </h2>
-              <p className="mt-1 text-sm text-slate-400">
-                {t("app.employees.teamSubtitle")}
-              </p>
-            </div>
-
-            <span className="shrink-0 rounded-full border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-400">
-              {t("app.employees.activeCount", { count: activeCount })}
-            </span>
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            {loading && (
-              <p className="text-sm text-slate-500 md:col-span-2">
-                {t("app.common.loading")}
-              </p>
-            )}
-            {!loading && error && (
-              <p className="text-sm text-red-400 md:col-span-2">
-                {t("app.employees.loadError")}
-              </p>
-            )}
-            {!loading && !error && employees.length === 0 && (
-              <p className="text-sm text-slate-500 md:col-span-2">
-                {t("app.employees.emptyTeam")}
-              </p>
-            )}
-            {views.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <article
-                  key={item.employee.id}
-                  className="group rounded-2xl border border-slate-800 bg-slate-900/60 p-5 transition hover:-translate-y-1 hover:border-slate-700 hover:bg-slate-900"
-                >
-                  <div className="flex items-start justify-between">
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-xl ${item.iconBackground}`}
-                    >
-                      <Icon className={`h-5 w-5 ${item.iconColor}`} />
-                    </div>
-
-                    <EmployeeActionsMenu employee={item.employee} />
-                  </div>
-
-                  <div className="mt-5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-semibold text-white">
-                        {item.name}
-                      </h3>
-
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${item.statusClass}`}
+                return (
+                  <Card
+                    key={item.employee.id}
+                    as="article"
+                    padded={false}
+                    className="group flex flex-col p-5 transition-colors hover:border-line-strong"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div
+                        className={cx(
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                          item.iconBackground,
+                        )}
                       >
-                        {item.statusLabel}
-                      </span>
+                        <Icon className={cx("h-5 w-5", item.iconColor)} aria-hidden="true" />
+                      </div>
+
+                      <EmployeeActionsMenu employee={item.employee} />
                     </div>
 
-                    <p className="mt-1 text-sm font-medium text-blue-400">
-                      {item.role}
-                    </p>
+                    <div className="mt-4 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-semibold text-fg">{item.name}</h3>
+                        <Badge tone={item.statusTone} dot>
+                          {item.statusLabel}
+                        </Badge>
+                      </div>
 
-                    <p className="mt-3 text-sm leading-6 text-slate-400">
-                      {item.description}
-                    </p>
-                  </div>
+                      <p className="mt-1 text-sm text-primary-text">{item.role}</p>
 
-                  <div className="mt-5 flex items-center justify-between border-t border-slate-800 pt-4">
-                    <span className="text-xs text-slate-500">
-                      {item.completed}
-                    </span>
+                      <p className="mt-3 text-sm leading-6 text-fg-muted">{item.description}</p>
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEmployee(item.employee.id)}
-                      className="text-xs font-medium text-blue-400 transition hover:text-blue-300"
-                    >
-                      {t("app.employees.open")}
-                    </button>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                    <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+                      <span className="text-xs tabular-nums text-fg-subtle">{item.completed}</span>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-mr-2"
+                        onClick={() => handleOpenEmployee(item.employee.id)}
+                      >
+                        {t("app.employees.open")}
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </section>
       </section>
 
@@ -279,63 +276,65 @@ export default function EmployeesPage() {
             type="button"
             aria-label={t("app.employees.closePanel")}
             onClick={closePanel}
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px] dark:bg-black/60"
           />
 
-          <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-800 bg-slate-950 shadow-2xl shadow-black/50">
-            <div className="flex items-start justify-between border-b border-slate-800 p-6">
-              <div className="flex items-center gap-3">
+          <aside
+            aria-labelledby={panelTitleId}
+            className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-line bg-surface shadow-overlay"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
                 <div
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl ${selectedEmployee.iconBackground}`}
+                  className={cx(
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+                    selectedEmployee.iconBackground,
+                  )}
                 >
                   <selectedEmployee.icon
-                    className={`h-5 w-5 ${selectedEmployee.iconColor}`}
+                    className={cx("h-5 w-5", selectedEmployee.iconColor)}
+                    aria-hidden="true"
                   />
                 </div>
 
-                <div>
-                  <p className="text-base font-semibold text-white">
+                <div className="min-w-0">
+                  <p id={panelTitleId} className="truncate text-base font-semibold text-fg">
                     {selectedEmployee.name}
                   </p>
-                  <p className="mt-1 text-sm text-blue-400">
+                  <p className="mt-0.5 truncate text-sm text-primary-text">
                     {selectedEmployee.role}
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
+              <IconButton
+                size="sm"
+                className="-mr-1.5"
                 aria-label={t("app.employees.close")}
                 onClick={closePanel}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-slate-200"
               >
-                <X className="h-5 w-5" />
-              </button>
+                <X />
+              </IconButton>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${selectedEmployee.statusClass}`}
-              >
-                {selectedEmployee.statusLabel}
-              </span>
+            <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+              <div className="space-y-3">
+                <Badge tone={selectedEmployee.statusTone} dot>
+                  {selectedEmployee.statusLabel}
+                </Badge>
 
-              <p className="mt-4 text-sm leading-6 text-slate-400">
-                {selectedEmployee.description}
-              </p>
+                <p className="text-sm leading-6 text-fg-muted">{selectedEmployee.description}</p>
+              </div>
 
-              <div className="mt-8">
-                <label className="text-sm font-semibold text-white">
-                  {selectedEmployee.taskLabel}
-                </label>
-
+              <Field label={selectedEmployee.taskLabel} htmlFor={taskFieldId}>
                 <textarea
+                  id={taskFieldId}
                   value={task}
                   onChange={(event) => setTask(event.target.value)}
                   placeholder={selectedEmployee.taskPlaceholder}
-                  className="mt-3 min-h-36 w-full resize-none rounded-xl border border-slate-800 bg-slate-900 p-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  className={cx(textareaClass, "min-h-36 resize-none")}
                 />
-              </div>
+              </Field>
 
               {result && (
                 <RunResultCard title={t("app.employees.taskCompleted")} output={result} />
@@ -346,23 +345,18 @@ export default function EmployeesPage() {
               )}
             </div>
 
-            <div className="border-t border-slate-800 p-6">
-              <button
-                type="button"
+            <div className="border-t border-line bg-surface-2/60 px-5 py-4">
+              <Button
+                variant="primary"
+                size="lg"
+                block
+                loading={isRunning}
                 onClick={() => void handleRunTask()}
-                disabled={!task.trim() || isRunning || selectedEmployee.employee.status === "paused"}
-                className="flex h-11 w-full items-center justify-center rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!task.trim() || selectedEmployee.employee.status === "paused"}
               >
-                <span className="flex items-center gap-2">
-                  {isRunning ? (
-                    <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4" />
-                  )}
-
-                  <span>{isRunning ? t("app.employees.working") : t("app.employees.runTask")}</span>
-                </span>
-              </button>
+                {!isRunning && <Sparkles />}
+                {isRunning ? t("app.employees.working") : t("app.employees.runTask")}
+              </Button>
             </div>
           </aside>
         </div>

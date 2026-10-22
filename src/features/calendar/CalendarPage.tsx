@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { CalendarCheck, CalendarDays, Plus, Settings2, Video } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Alert } from "../../components/ui/Alert";
+import { Button } from "../../components/ui/Button";
+import { Card, CardHeader } from "../../components/ui/Card";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { buttonClass, cx, skeletonClass } from "../../components/ui/styles";
 import AppShell from "../../layouts/AppShell";
 import { useLocale } from "../../i18n/LocaleProvider";
 import {
@@ -70,58 +77,49 @@ function EventRow({
   const start = formatTime(event, locale, "start");
   const end = formatTime(event, locale, "end");
   return (
-    <li className="rounded-xl border border-slate-800 px-3 py-3">
-      <div className="flex items-start gap-2">
-        <span
-          className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: event.calendarColor || "#64748b" }}
-          aria-hidden="true"
-        />
-        <div className="min-w-0 flex-1">
-      <p className="text-sm font-medium text-white">{event.title}</p>
-      <p className="mt-1 text-xs text-slate-500">
-        {event.isAllDay
-          ? allDayLabel
-          : [start, end].filter(Boolean).join(" – ")}
-        {event.calendarName ? ` · ${event.calendarName}` : ""}
-        {event.location ? ` · ${event.location}` : ""}
-      </p>
-      {event.meetingUrl && (
-        <a
-          href={event.meetingUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2 inline-flex text-xs font-medium text-[var(--lunyo-primary)] hover:brightness-125"
-        >
-            {joinLabel}
-          </a>
-      )}
-      {canWrite && event.canModify && event.googleEventId && (
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onEdit(event)}
-            className="text-xs font-medium text-slate-300 hover:text-white"
-          >
-            {editLabel}
-          </button>
-          <button
-            type="button"
-            onClick={() => onReschedule(event)}
-            className="text-xs font-medium text-slate-300 hover:text-white"
-          >
-            {rescheduleLabel}
-          </button>
-          <button
-            type="button"
-            onClick={() => onCancel(event)}
-            className="text-xs font-medium text-red-400 hover:text-red-300"
-          >
-            {cancelLabel}
-          </button>
-        </div>
-      )}
-        </div>
+    <li className="flex items-start gap-3 px-5 py-3">
+      <span
+        className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ring-2 ring-surface"
+        style={{ backgroundColor: event.calendarColor || "var(--color-fg-subtle)" }}
+        aria-hidden="true"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-fg">{event.title}</p>
+        <p className="mt-0.5 text-xs tabular-nums text-fg-subtle">
+          {event.isAllDay
+            ? allDayLabel
+            : [start, end].filter(Boolean).join(" – ")}
+          {event.calendarName ? ` · ${event.calendarName}` : ""}
+          {event.location ? ` · ${event.location}` : ""}
+        </p>
+        {(event.meetingUrl || (canWrite && event.canModify && event.googleEventId)) && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {event.meetingUrl && (
+              <a
+                href={event.meetingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2.5 text-xs font-medium text-primary-text transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              >
+                <Video className="h-3.5 w-3.5" aria-hidden="true" />
+                {joinLabel}
+              </a>
+            )}
+            {canWrite && event.canModify && event.googleEventId && (
+              <>
+                <Button variant="ghost" size="sm" className="h-7" onClick={() => onEdit(event)}>
+                  {editLabel}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7" onClick={() => onReschedule(event)}>
+                  {rescheduleLabel}
+                </Button>
+                <Button variant="dangerGhost" size="sm" className="h-7" onClick={() => onCancel(event)}>
+                  {cancelLabel}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </li>
   );
@@ -129,12 +127,9 @@ function EventRow({
 
 function SkeletonList() {
   return (
-    <ul className="mt-3 space-y-2" aria-hidden="true">
+    <ul className="space-y-2 p-5" aria-hidden="true">
       {[0, 1, 2].map((item) => (
-        <li
-          key={item}
-          className="h-16 animate-pulse rounded-xl border border-slate-800 bg-slate-900/80"
-        />
+        <li key={item} className={cx(skeletonClass, "h-14")} />
       ))}
     </ul>
   );
@@ -224,141 +219,162 @@ export default function CalendarPage() {
     return [...groups.entries()];
   }, [upcoming]);
 
+  const now = new Date();
   const todayLabel = new Intl.DateTimeFormat(localeTag, {
     weekday: "long",
     month: "long",
     day: "numeric",
-  }).format(new Date());
+  }).format(now);
+  const todayKey = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+
+  const rowProps = {
+    locale: localeTag,
+    joinLabel: t("app.calendar.join"),
+    allDayLabel: t("app.calendar.allDay"),
+    editLabel: t("app.calendar.editEvent"),
+    rescheduleLabel: t("app.calendar.reschedule"),
+    cancelLabel: t("app.calendar.cancelEvent"),
+    canWrite,
+    onEdit: (item: CalendarEventSummary) => setEditor({ mode: "edit", event: item }),
+    onReschedule: (item: CalendarEventSummary) => setEditor({ mode: "reschedule", event: item }),
+    onCancel: (item: CalendarEventSummary) => setEditor({ mode: "delete", event: item }),
+  };
 
   return (
     <AppShell>
-      <section className="mx-auto max-w-3xl space-y-8">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold text-white">{t("app.calendar.title")}</h1>
-            <p className="mt-1 text-sm text-slate-400">{t("app.calendar.subtitle")}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {canWrite && calendars.some((item) => item.writable) && (
-              <button
-                type="button"
-                onClick={() => setEditor({ mode: "create" })}
-                className="flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500"
-              >
-                {t("app.calendar.newEvent")}
-              </button>
-            )}
-            <Link
-              to="/settings"
-              className="flex h-10 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900"
-            >
-              {t("app.calendar.manage")}
+      <section className="space-y-6">
+        <PageHeader
+          icon={CalendarDays}
+          tone="cyan"
+          title={t("app.calendar.title")}
+          description={t("app.calendar.subtitle")}
+          actions={
+            <>
+              <Link to="/settings" className={buttonClass({ variant: "secondary" })}>
+                <Settings2 aria-hidden="true" />
+                {t("app.calendar.manage")}
+              </Link>
+              {canWrite && calendars.some((item) => item.writable) && (
+                <Button variant="primary" onClick={() => setEditor({ mode: "create" })}>
+                  <Plus aria-hidden="true" />
+                  {t("app.calendar.newEvent")}
+                </Button>
+              )}
+            </>
+          }
+        />
+
+        <div className="space-y-3 empty:hidden">
+          {success && (
+            <Alert tone="success">
+              {success}
+              {successLink && (
+                <>
+                  {" "}
+                  <a
+                    href={successLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-primary-text underline-offset-2 hover:underline"
+                  >
+                    {t("app.calendar.openInGoogle")}
+                  </a>
+                </>
+              )}
+            </Alert>
+          )}
+          {error && <Alert tone="danger">{error}</Alert>}
+          {!canWrite && !loading && !needsReconnect && !notConfigured && (
+            <Alert tone="info">{t("app.calendar.writeRequired")}</Alert>
+          )}
+          {(needsReconnect || notConfigured) && !loading && (
+            <Link to="/settings" className={buttonClass({ variant: "primary" })}>
+              {notConfigured
+                ? t("app.settings.googleNotConfigured")
+                : t("app.calendar.reconnect")}
             </Link>
-          </div>
+          )}
         </div>
 
-        {success && (
-          <p className="text-sm text-[var(--lunyo-success)]">
-            {success}
-            {successLink && (
-              <>
-                {" "}
-                <a
-                  href={successLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-[var(--lunyo-primary)] hover:brightness-125"
-                >
-                  {t("app.calendar.openInGoogle")}
-                </a>
-              </>
-            )}
-          </p>
-        )}
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        {!canWrite && !loading && !needsReconnect && !notConfigured && (
-          <p className="text-sm text-slate-400">{t("app.calendar.writeRequired")}</p>
-        )}
-        {(needsReconnect || notConfigured) && !loading && (
-          <Link
-            to="/settings"
-            className="inline-flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500"
-          >
-            {notConfigured
-              ? t("app.settings.googleNotConfigured")
-              : t("app.calendar.reconnect")}
-          </Link>
-        )}
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-base font-semibold text-white">
-            {t("app.calendar.todayTitle")}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">{todayLabel}</p>
-          {loading ? (
-            <SkeletonList />
-          ) : error ? null : today.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">{t("app.calendar.todayEmpty")}</p>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {today.map((event) => (
-                <EventRow
-                  key={event.id}
-                  event={event}
-                  locale={localeTag}
-                  joinLabel={t("app.calendar.join")}
-                  allDayLabel={t("app.calendar.allDay")}
-                  editLabel={t("app.calendar.editEvent")}
-                  rescheduleLabel={t("app.calendar.reschedule")}
-                  cancelLabel={t("app.calendar.cancelEvent")}
-                  canWrite={canWrite}
-                  onEdit={(item) => setEditor({ mode: "edit", event: item })}
-                  onReschedule={(item) => setEditor({ mode: "reschedule", event: item })}
-                  onCancel={(item) => setEditor({ mode: "delete", event: item })}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <h2 className="text-base font-semibold text-white">
-            {t("app.calendar.weekTitle")}
-          </h2>
-          {loading ? (
-            <SkeletonList />
-          ) : error ? null : groupedUpcoming.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">{t("app.calendar.weekEmpty")}</p>
-          ) : (
-            <div className="mt-4 space-y-5">
-              {groupedUpcoming.map(([day, events]) => (
-                <div key={day}>
-                  <p className="text-xs font-semibold tracking-wider text-slate-500">
-                    {formatDayLabel(day, localeTag)}
-                  </p>
-                  <ul className="mt-2 space-y-2">
-                    {events.map((event) => (
-                      <EventRow
-                        key={event.id}
-                        event={event}
-                        locale={localeTag}
-                        joinLabel={t("app.calendar.join")}
-                        allDayLabel={t("app.calendar.allDay")}
-                        editLabel={t("app.calendar.editEvent")}
-                        rescheduleLabel={t("app.calendar.reschedule")}
-                        cancelLabel={t("app.calendar.cancelEvent")}
-                        canWrite={canWrite}
-                        onEdit={(item) => setEditor({ mode: "edit", event: item })}
-                        onReschedule={(item) => setEditor({ mode: "reschedule", event: item })}
-                        onCancel={(item) => setEditor({ mode: "delete", event: item })}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              ))}
+        <div className="grid items-start gap-6 xl:grid-cols-5">
+          <Card padded={false} className="xl:col-span-2">
+            <div className="flex items-center gap-3 border-b border-line px-5 py-4">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-fg"
+                aria-hidden="true"
+              >
+                <span className="text-base font-semibold leading-none tabular-nums">
+                  {Number(todayKey.slice(8, 10))}
+                </span>
+              </div>
+              <CardHeader
+                className="min-w-0 flex-1"
+                title={t("app.calendar.todayTitle")}
+                description={<span className="capitalize">{todayLabel}</span>}
+              />
             </div>
-          )}
-        </section>
+            {loading ? (
+              <SkeletonList />
+            ) : error ? null : today.length === 0 ? (
+              <EmptyState tone="cyan" icon={CalendarCheck} title={t("app.calendar.todayEmpty")} />
+            ) : (
+              <ul className="divide-y divide-line">
+                {today.map((event) => (
+                  <EventRow key={event.id} event={event} {...rowProps} />
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card padded={false} className="xl:col-span-3">
+            <div className="border-b border-line px-5 py-4">
+              <CardHeader title={t("app.calendar.weekTitle")} />
+            </div>
+            {loading ? (
+              <SkeletonList />
+            ) : error ? null : groupedUpcoming.length === 0 ? (
+              <EmptyState tone="cyan" icon={CalendarDays} title={t("app.calendar.weekEmpty")} />
+            ) : (
+              <div className="divide-y divide-line">
+                {groupedUpcoming.map(([day, events]) => {
+                  const isToday = day === todayKey;
+                  return (
+                    <div key={day}>
+                      <div className="flex items-center gap-2.5 bg-surface-2 px-5 py-2">
+                        <span
+                          className={cx(
+                            "flex h-6 min-w-6 items-center justify-center rounded-md px-1 text-xs font-semibold tabular-nums",
+                            isToday ? "bg-primary text-primary-fg" : "border border-line bg-surface text-fg-muted",
+                          )}
+                          aria-hidden="true"
+                        >
+                          {Number(day.slice(8, 10)) || ""}
+                        </span>
+                        <p
+                          className={cx(
+                            "text-xs font-medium capitalize",
+                            isToday ? "text-primary-text" : "text-fg-muted",
+                          )}
+                        >
+                          {formatDayLabel(day, localeTag)}
+                        </p>
+                      </div>
+                      <ul className="divide-y divide-line">
+                        {events.map((event) => (
+                          <EventRow key={event.id} event={event} {...rowProps} />
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
       </section>
       {editor && (
         <EventFormModal

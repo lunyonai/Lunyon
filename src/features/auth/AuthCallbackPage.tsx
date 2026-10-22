@@ -24,7 +24,7 @@ export default function AuthCallbackPage() {
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-slate-950" />;
+    return <div className="min-h-screen bg-canvas" />;
   }
 
   if (recovering) {
@@ -42,5 +42,5 @@ export default function AuthCallbackPage() {
     return <Navigate to={`${loginPath(locale)}?error=google`} replace />;
   }
 
-  return <div className="min-h-screen bg-slate-950" />;
+  return <div className="min-h-screen bg-canvas" />;
 }

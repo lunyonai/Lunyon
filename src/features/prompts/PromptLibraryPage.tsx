@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import {
   ArrowUpRight,
   BookOpen,
   Clock3,
   Copy,
   FileText,
+  LibraryBig,
   Mail,
   MessageSquareText,
   Plus,
@@ -13,6 +14,14 @@ import {
   X,
 } from "lucide-react";
 import AppShell from "../../layouts/AppShell";
+import { Badge } from "../../components/ui/Badge";
+import { Button, IconButton } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Field } from "../../components/ui/Field";
+import { IconTile, type TileTone } from "../../components/ui/IconTile";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { cx, inputClass, textareaClass } from "../../components/ui/styles";
 import { useActivity } from "../activity/ActivityContext";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { api } from "../../lib/api";
@@ -23,25 +32,22 @@ const promptDefs = [
   {
     id: "followUp",
     icon: Mail,
-    iconColor: "text-blue-400",
-    iconBackground: "bg-blue-500/10",
+    tone: "rose",
     categoryKey: "catSales",
   },
   {
     id: "notes",
     icon: MessageSquareText,
-    iconColor: "text-violet-400",
-    iconBackground: "bg-violet-500/10",
+    tone: "primary",
     categoryKey: "catProductivity",
   },
   {
     id: "weekly",
     icon: Clock3,
-    iconColor: "text-emerald-400",
-    iconBackground: "bg-emerald-500/10",
+    tone: "amber",
     categoryKey: "catManagement",
   },
-] as const;
+] as const satisfies ReadonlyArray<{ id: string; icon: typeof Mail; tone: TileTone; categoryKey: string }>;
 
 type PromptId = (typeof promptDefs)[number]["id"];
 
@@ -54,6 +60,8 @@ export default function PromptLibraryPage() {
   const [result, setResult] = useState<string | null>(null);
   const [runError, setRunError] = useState<{ key: string; needsSettings: boolean } | null>(null);
   const { stats, refresh: refreshActivity } = useActivity();
+  const panelTitleId = useId();
+  const contextFieldId = useId();
 
   const prompts = useMemo(
     () =>
@@ -111,136 +119,117 @@ export default function PromptLibraryPage() {
 
   return (
     <AppShell>
-      <section>
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-sm font-medium text-blue-400">{t("app.prompts.kicker")}</p>
+      <section className="space-y-6">
+        <PageHeader
+          icon={LibraryBig}
+          tone="amber"
+          title={t("app.prompts.title")}
+          description={t("app.prompts.subtitle")}
+          actions={
+            <Button variant="primary">
+              <Plus />
+              {t("app.prompts.newPrompt")}
+            </Button>
+          }
+        />
 
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-              {t("app.prompts.title")}
-            </h1>
-
-            <p className="mt-2 text-sm text-slate-400">
-              {t("app.prompts.subtitle")}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500"
-          >
-            <Plus className="h-4 w-4" />
-            {t("app.prompts.newPrompt")}
-          </button>
-        </div>
-
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-subtle"
+              aria-hidden="true"
+            />
 
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("app.prompts.search")}
-              className="h-11 w-full rounded-xl border border-slate-800 bg-slate-900/60 px-10 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              aria-label={t("app.prompts.search")}
+              className={cx(inputClass, "pl-9")}
             />
           </div>
 
-          <button
-            type="button"
-            className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
-          >
-            <BookOpen className="h-4 w-4" />
+          <Button>
+            <BookOpen />
             {t("app.prompts.allCategories")}
-          </button>
+          </Button>
         </div>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredPrompts.map((prompt) => {
             const Icon = prompt.icon;
 
             return (
-              <article
+              <Card
                 key={prompt.id}
-                className="group flex min-h-56 flex-col rounded-2xl border border-slate-800 bg-slate-900/60 p-5 transition hover:-translate-y-1 hover:border-slate-700 hover:bg-slate-900"
+                as="article"
+                padded={false}
+                className="group flex min-h-56 flex-col p-5 transition-colors hover:border-line-strong"
               >
-                <div className="flex items-start justify-between">
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-xl ${prompt.iconBackground}`}
-                  >
-                    <Icon className={`h-5 w-5 ${prompt.iconColor}`} />
-                  </div>
+                <div className="flex items-start justify-between gap-3">
+                  <IconTile icon={Icon} tone={prompt.tone} />
 
-                  <button
-                    type="button"
+                  <IconButton
+                    size="sm"
                     onClick={() => setSelectedPromptId(prompt.id)}
                     aria-label={t("app.prompts.useAria", { title: prompt.title })}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 opacity-0 transition hover:bg-slate-800 hover:text-slate-200 group-hover:opacity-100"
+                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   >
-                    <ArrowUpRight className="h-4 w-4" />
-                  </button>
+                    <ArrowUpRight />
+                  </IconButton>
                 </div>
 
-                <div className="mt-5">
-                  <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs font-medium text-slate-400">
-                    {prompt.category}
-                  </span>
+                <div className="mt-4 flex-1">
+                  <Badge>{prompt.category}</Badge>
 
-                  <h2 className="mt-3 text-base font-semibold text-white">
-                    {prompt.title}
-                  </h2>
+                  <h2 className="mt-3 text-sm font-semibold text-fg">{prompt.title}</h2>
 
-                  <p className="mt-2 text-sm leading-6 text-slate-400">
-                    {prompt.description}
-                  </p>
+                  <p className="mt-1.5 text-sm leading-6 text-fg-muted">{prompt.description}</p>
                 </div>
 
-                <div className="mt-auto flex items-center justify-between border-t border-slate-800 pt-4">
-                  <span className="text-xs text-slate-500">
+                <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+                  <span className="text-xs tabular-nums text-fg-subtle">
                     {t("app.prompts.usedTimes", {
                       uses: stats?.byRef[`prompt:${prompt.id}`] ?? 0,
                     })}
                   </span>
 
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="-mr-2"
                     onClick={() => setSelectedPromptId(prompt.id)}
-                    className="flex items-center gap-1.5 text-xs font-medium text-blue-400 transition hover:text-blue-300"
                   >
-                    <Copy className="h-3.5 w-3.5" />
+                    <Copy />
                     {t("app.prompts.usePrompt")}
-                  </button>
+                  </Button>
                 </div>
-              </article>
+              </Card>
             );
           })}
 
           {filteredPrompts.length === 0 && (
-            <div className="col-span-full rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 px-6 py-14 text-center">
-              <Search className="mx-auto h-6 w-6 text-slate-500" />
-              <p className="mt-4 text-sm font-semibold text-slate-300">
-                {t("app.prompts.emptyTitle")}
-              </p>
-              <p className="mt-2 text-sm text-slate-500">
-                {t("app.prompts.emptyBody")}
-              </p>
+            <div className="col-span-full rounded-xl border border-dashed border-line-strong">
+              <EmptyState tone="amber"
+                icon={Search}
+                title={t("app.prompts.emptyTitle")}
+                description={t("app.prompts.emptyBody")}
+              />
             </div>
           )}
 
           <button
             type="button"
-            className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-900/30 p-5 text-center transition hover:border-blue-500/60 hover:bg-blue-500/5"
+            className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed border-line-strong p-5 text-center transition-colors hover:border-primary/40 hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10">
-              <Sparkles className="h-5 w-5 text-blue-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary-text">
+              <Sparkles className="h-5 w-5" aria-hidden="true" />
             </div>
 
-            <p className="mt-4 text-sm font-semibold text-slate-200">
-              {t("app.prompts.createTitle")}
-            </p>
+            <p className="mt-4 text-sm font-medium text-fg">{t("app.prompts.createTitle")}</p>
 
-            <p className="mt-2 max-w-52 text-xs leading-5 text-slate-500">
+            <p className="mt-1 max-w-52 text-xs leading-5 text-fg-subtle">
               {t("app.prompts.createBody")}
             </p>
           </button>
@@ -253,57 +242,49 @@ export default function PromptLibraryPage() {
             type="button"
             aria-label={t("app.prompts.closePanel")}
             onClick={closePanel}
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px] dark:bg-black/60"
           />
 
-          <aside className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-800 bg-slate-950 shadow-2xl shadow-black/50">
-            <div className="flex items-start justify-between border-b border-slate-800 p-6">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl ${selectedPrompt.iconBackground}`}
-                >
-                  <selectedPrompt.icon
-                    className={`h-5 w-5 ${selectedPrompt.iconColor}`}
-                  />
-                </div>
+          <aside
+            aria-labelledby={panelTitleId}
+            className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-line bg-surface shadow-overlay"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <IconTile icon={selectedPrompt.icon} tone={selectedPrompt.tone} />
 
-                <div>
-                  <p className="text-base font-semibold text-white">
+                <div className="min-w-0">
+                  <p id={panelTitleId} className="truncate text-base font-semibold text-fg">
                     {selectedPrompt.title}
                   </p>
-                  <p className="mt-1 text-sm text-blue-400">
+                  <p className="mt-0.5 truncate text-sm text-primary-text">
                     {selectedPrompt.category}
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
+              <IconButton
+                size="sm"
+                className="-mr-1.5"
                 aria-label={t("app.prompts.close")}
                 onClick={closePanel}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-900 hover:text-slate-200"
               >
-                <X className="h-5 w-5" />
-              </button>
+                <X />
+              </IconButton>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              <p className="text-sm leading-6 text-slate-400">
-                {selectedPrompt.description}
-              </p>
+            <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+              <p className="text-sm leading-6 text-fg-muted">{selectedPrompt.description}</p>
 
-              <div className="mt-8">
-                <label className="text-sm font-semibold text-white">
-                  {selectedPrompt.inputLabel}
-                </label>
-
+              <Field label={selectedPrompt.inputLabel} htmlFor={contextFieldId}>
                 <textarea
+                  id={contextFieldId}
                   value={context}
                   onChange={(event) => setContext(event.target.value)}
                   placeholder={selectedPrompt.inputPlaceholder}
-                  className="mt-3 min-h-40 w-full resize-none rounded-xl border border-slate-800 bg-slate-900 p-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                  className={cx(textareaClass, "min-h-40 resize-none")}
                 />
-              </div>
+              </Field>
 
               {result && (
                 <RunResultCard title={t("app.prompts.draftGenerated")} output={result} />
@@ -314,26 +295,19 @@ export default function PromptLibraryPage() {
               )}
             </div>
 
-           <div className="border-t border-slate-800 p-6">
-  <button
-    type="button"
-    onClick={() => void handleRunPrompt()}
-    disabled={!context.trim() || isRunning}
-    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-lg shadow-blue-950/60 transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-  >
-    {isRunning ? (
-      <span className="flex items-center gap-2">
-        <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-        {t("app.prompts.generating")}
-      </span>
-    ) : (
-      <span className="flex items-center gap-2">
-        <FileText className="h-4 w-4" />
-        {t("app.prompts.generateDraft")}
-      </span>
-    )}
-  </button>
-</div>
+            <div className="border-t border-line bg-surface-2/60 px-5 py-4">
+              <Button
+                variant="primary"
+                size="lg"
+                block
+                loading={isRunning}
+                onClick={() => void handleRunPrompt()}
+                disabled={!context.trim()}
+              >
+                {!isRunning && <FileText />}
+                {isRunning ? t("app.prompts.generating") : t("app.prompts.generateDraft")}
+              </Button>
+            </div>
           </aside>
         </div>
       )}

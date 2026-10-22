@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card, CardHeader } from "../../components/ui/Card";
 import { localeMeta } from "../../i18n/config";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { api, type EntitlementResponse } from "../../lib/api";
@@ -37,35 +40,45 @@ export default function PlanPanel() {
     : null;
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-      <h2 className="text-base font-semibold text-white">{t("app.billing.section")}</h2>
+    <Card>
+      <CardHeader
+        title={t("app.billing.section")}
+        actions={
+          !plan ? undefined : plan.active ? (
+            <Badge tone="primary" dot>
+              {t("app.workflows.statusActive")}
+            </Badge>
+          ) : (
+            <Badge>{t("app.dashboard.planFree")}</Badge>
+          )
+        }
+      />
 
-      {plan?.active ? (
-        <p className="mt-3 text-sm text-emerald-400">
-          {t("app.billing.active", { date: until ?? "—" })}
-        </p>
-      ) : (
-        <p className="mt-3 text-sm text-slate-300">
-          {plan?.status === "expired" && until
-            ? t("app.billing.expired", { date: until })
-            : t("app.billing.free")}
-        </p>
-      )}
-      <p className="mt-2 text-sm text-slate-400">{t("app.billing.hint")}</p>
+      <div className="mt-5 rounded-lg border border-line bg-surface-2 px-4 py-3.5">
+        {plan?.active ? (
+          <p className="text-sm font-medium text-fg">
+            {t("app.billing.active", { date: until ?? "—" })}
+          </p>
+        ) : (
+          <p className="text-sm font-medium text-fg">
+            {plan?.status === "expired" && until
+              ? t("app.billing.expired", { date: until })
+              : t("app.billing.free")}
+          </p>
+        )}
+        <p className="mt-1.5 text-sm text-fg-muted">{t("app.billing.hint")}</p>
+      </div>
 
-      <button
-        type="button"
-        onClick={() => void handleCheckout()}
-        disabled={busy}
-        className="mt-5 flex h-10 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-      >
-        {busy
-          ? t("app.billing.redirecting")
-          : plan?.active
-            ? t("app.billing.extend")
-            : t("app.billing.buy")}
-      </button>
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-    </section>
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+        {error && <p className="text-sm text-danger-text">{error}</p>}
+        <Button variant="primary" onClick={() => void handleCheckout()} disabled={busy}>
+          {busy
+            ? t("app.billing.redirecting")
+            : plan?.active
+              ? t("app.billing.extend")
+              : t("app.billing.buy")}
+        </Button>
+      </div>
+    </Card>
   );
 }

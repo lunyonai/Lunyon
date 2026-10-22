@@ -1,7 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { Activity, ArrowLeft, SearchX, Workflow } from "lucide-react";
 import AppShell from "../../layouts/AppShell";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card, CardHeader } from "../../components/ui/Card";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { Field } from "../../components/ui/Field";
+import { PageHeader } from "../../components/ui/PageHeader";
+import {
+  buttonClass,
+  cx,
+  inputClass,
+  skeletonClass,
+  textareaClass,
+} from "../../components/ui/styles";
 import { useLocale } from "../../i18n/LocaleProvider";
 import { relativeTime } from "../activity/activityView";
 import { useWorkflows } from "../workflows/WorkflowsContext";
@@ -14,15 +27,13 @@ import {
   UPCOMING_CAPABILITIES,
   type Employee,
 } from "./employeeTypes";
-import { employeeIconMap, resolveEmployeeCopy, statusClass } from "./employeeView";
-
-const fieldClass =
-  "mt-2 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10";
+import { employeeIconMap, resolveEmployeeCopy, statusTone } from "./employeeView";
 
 export default function EmployeeConfigPage() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const { t } = useLocale();
+  const fieldId = useId();
   const { employees, loading, updateEmployee, toggleCapability } = useEmployees();
   const { workflows } = useWorkflows();
   const [employeeActivity, setEmployeeActivity] = useState<ActivityRecord[]>([]);
@@ -100,10 +111,22 @@ export default function EmployeeConfigPage() {
     };
   }, [employeeId]);
 
+  const backButton = (
+    <Button variant="ghost" size="sm" className="-ml-2.5" onClick={() => navigate("/employees")}>
+      <ArrowLeft />
+      {t("app.common.back")}
+    </Button>
+  );
+
   if (employee === undefined) {
     return (
       <AppShell>
-        <p className="text-sm text-slate-400">{t("app.common.loading")}</p>
+        <section className="mx-auto max-w-3xl space-y-6" aria-busy="true">
+          <p className="sr-only">{t("app.common.loading")}</p>
+          <div className={cx(skeletonClass, "h-12 w-64")} aria-hidden="true" />
+          <div className={cx(skeletonClass, "h-56 rounded-xl")} aria-hidden="true" />
+          <div className={cx(skeletonClass, "h-40 rounded-xl")} aria-hidden="true" />
+        </section>
       </AppShell>
     );
   }
@@ -111,10 +134,20 @@ export default function EmployeeConfigPage() {
   if (!employee || !copy) {
     return (
       <AppShell>
-        <p className="text-sm text-slate-400">{t("app.employees.notFound")}</p>
-        <Link to="/employees" className="mt-4 inline-flex text-sm text-blue-400">
-          {t("app.common.back")}
-        </Link>
+        <section className="mx-auto max-w-3xl">
+          <Card padded={false}>
+            <EmptyState tone="violet"
+              icon={SearchX}
+              title={t("app.employees.notFound")}
+              action={
+                <Link to="/employees" className={buttonClass({ size: "sm" })}>
+                  <ArrowLeft />
+                  {t("app.common.back")}
+                </Link>
+              }
+            />
+          </Card>
+        </section>
       </AppShell>
     );
   }
@@ -155,110 +188,111 @@ export default function EmployeeConfigPage() {
 
   return (
     <AppShell>
-      <section className="mx-auto max-w-3xl space-y-8">
-        <button
-          type="button"
-          onClick={() => navigate("/employees")}
-          className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-slate-200"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {t("app.common.back")}
-        </button>
-
-        <div className="flex items-start gap-4">
-          <div
-            className={`flex h-12 w-12 items-center justify-center rounded-xl ${visual.background}`}
-          >
-            <Icon className={`h-5 w-5 ${visual.color}`} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">
-              {copy.name}
-            </h1>
-            <p className="mt-1 text-sm text-blue-400">{copy.role}</p>
-            <span
-              className={`mt-3 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(employee.status)}`}
-            >
+      <section className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          eyebrow={backButton}
+          title={
+            <span className="flex items-center gap-3">
+              <span
+                className={cx(
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                  visual.background,
+                )}
+              >
+                <Icon className={cx("h-[18px] w-[18px]", visual.color)} aria-hidden="true" />
+              </span>
+              <span className="min-w-0">{copy.name}</span>
+            </span>
+          }
+          description={<span className="text-primary-text">{copy.role}</span>}
+          actions={
+            <Badge tone={statusTone(employee.status)} dot>
               {t(
                 employee.status === "active"
                   ? "app.employees.statusActive"
                   : "app.employees.statusPaused",
               )}
-            </span>
-          </div>
-        </div>
+            </Badge>
+          }
+        />
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <p className="text-xs font-semibold tracking-wider text-slate-500">
-            {t("app.employees.identitySection")}
-          </p>
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.employees.fieldName")}
-            <input value={name} onChange={(event) => setName(event.target.value)} className={fieldClass} />
-          </label>
-          {errors.name && <p className="mt-1 text-xs text-red-400">{errors.name}</p>}
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.employees.fieldRole")}
-            <input value={role} onChange={(event) => setRole(event.target.value)} className={fieldClass} />
-          </label>
-          {errors.role && <p className="mt-1 text-xs text-red-400">{errors.role}</p>}
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.employees.fieldDescription")}
+        <Card className="space-y-5">
+          <CardHeader title={t("app.employees.identitySection")} />
+          <Field label={t("app.employees.fieldName")} htmlFor={`${fieldId}-name`} error={errors.name}>
+            <input
+              id={`${fieldId}-name`}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              aria-invalid={errors.name ? true : undefined}
+              className={inputClass}
+            />
+          </Field>
+          <Field label={t("app.employees.fieldRole")} htmlFor={`${fieldId}-role`} error={errors.role}>
+            <input
+              id={`${fieldId}-role`}
+              value={role}
+              onChange={(event) => setRole(event.target.value)}
+              aria-invalid={errors.role ? true : undefined}
+              className={inputClass}
+            />
+          </Field>
+          <Field label={t("app.employees.fieldDescription")} htmlFor={`${fieldId}-description`}>
             <textarea
+              id={`${fieldId}-description`}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              className={`${fieldClass} min-h-20 resize-none`}
+              className={cx(textareaClass, "min-h-20 resize-none")}
             />
-          </label>
-        </section>
+          </Field>
+        </Card>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <p className="text-xs font-semibold tracking-wider text-slate-500">
-            {t("app.employees.purposeSection")}
-          </p>
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.employees.fieldPurpose")}
+        <Card className="space-y-5">
+          <CardHeader title={t("app.employees.purposeSection")} />
+          <Field
+            label={t("app.employees.fieldPurpose")}
+            htmlFor={`${fieldId}-purpose`}
+            error={errors.purpose}
+          >
             <textarea
+              id={`${fieldId}-purpose`}
               value={purpose}
               onChange={(event) => setPurpose(event.target.value)}
-              className={`${fieldClass} min-h-24 resize-none`}
+              aria-invalid={errors.purpose ? true : undefined}
+              className={cx(textareaClass, "min-h-24 resize-none")}
             />
-          </label>
-          {errors.purpose && <p className="mt-1 text-xs text-red-400">{errors.purpose}</p>}
-        </section>
+          </Field>
+        </Card>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <p className="text-xs font-semibold tracking-wider text-slate-500">
-            {t("app.employees.instructionsSection")}
-          </p>
-          <label className="mt-4 block text-sm font-medium text-white">
-            {t("app.employees.fieldInstructions")}
+        <Card className="space-y-5">
+          <CardHeader title={t("app.employees.instructionsSection")} />
+          <Field
+            label={t("app.employees.fieldInstructions")}
+            htmlFor={`${fieldId}-instructions`}
+            error={errors.instructions}
+          >
             <textarea
+              id={`${fieldId}-instructions`}
               value={instructions}
               onChange={(event) => setInstructions(event.target.value)}
-              className={`${fieldClass} min-h-32 resize-none`}
+              aria-invalid={errors.instructions ? true : undefined}
+              className={cx(textareaClass, "min-h-32 resize-none")}
             />
-          </label>
-          {errors.instructions && (
-            <p className="mt-1 text-xs text-red-400">{errors.instructions}</p>
-          )}
-        </section>
+          </Field>
+        </Card>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <p className="text-xs font-semibold tracking-wider text-slate-500">
-            {t("app.employees.capabilitiesSection")}
-          </p>
-          <div className="mt-4 space-y-2">
+        <Card className="space-y-4">
+          <CardHeader title={t("app.employees.capabilitiesSection")} />
+          <div className="space-y-2">
             {AVAILABLE_CAPABILITIES.map((id) => (
               <label
                 key={id}
-                className="flex items-center gap-3 rounded-xl border border-slate-800 px-3 py-2.5 text-sm text-slate-200"
+                className="flex cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2.5 text-sm text-fg transition-colors hover:bg-surface-2"
               >
                 <input
                   type="checkbox"
                   checked={employee.capabilities.includes(id)}
                   onChange={() => void toggleCapability(currentEmployee.id, id)}
-                  className="accent-blue-500"
+                  className="h-4 w-4 accent-primary"
                 />
                 {t(`app.employees.cap.${id}`)}
               </label>
@@ -266,108 +300,100 @@ export default function EmployeeConfigPage() {
             {UPCOMING_CAPABILITIES.map((id) => (
               <label
                 key={id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 px-3 py-2.5 text-sm text-slate-500"
+                className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface-2 px-3 py-2.5 text-sm text-fg-subtle"
               >
                 <span className="flex items-center gap-3">
-                  <input type="checkbox" disabled className="accent-blue-500" />
+                  <input type="checkbox" disabled className="h-4 w-4 accent-primary" />
                   {t(`app.employees.cap.${id}`)}
                 </span>
-                <span className="text-[10px] uppercase tracking-wide">
-                  {t("app.common.comingLater")}
-                </span>
+                <Badge>{t("app.common.comingLater")}</Badge>
               </label>
             ))}
           </div>
-        </section>
+        </Card>
 
         {extraFields.length > 0 && (
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-            <p className="text-xs font-semibold tracking-wider text-slate-500">
-              {t("app.employees.extraSection")}
-            </p>
-            <p className="mt-2 text-sm text-slate-500">
-              {t("app.employees.extraHint")}
-            </p>
-            <div className="mt-4 space-y-4">
-              {extraFields.map((field) => (
-                <label key={field.key} className="block text-sm font-medium text-white">
-                  {t(field.labelKey)}
-                  <input
-                    value={extra[field.key] ?? ""}
-                    onChange={(event) =>
-                      setExtra((current) => ({
-                        ...current,
-                        [field.key]: event.target.value,
-                      }))
-                    }
-                    className={fieldClass}
-                  />
-                </label>
-              ))}
-            </div>
-          </section>
+          <Card className="space-y-5">
+            <CardHeader
+              title={t("app.employees.extraSection")}
+              description={t("app.employees.extraHint")}
+            />
+            {extraFields.map((field) => (
+              <Field
+                key={field.key}
+                label={t(field.labelKey)}
+                htmlFor={`${fieldId}-extra-${field.key}`}
+              >
+                <input
+                  id={`${fieldId}-extra-${field.key}`}
+                  value={extra[field.key] ?? ""}
+                  onChange={(event) =>
+                    setExtra((current) => ({
+                      ...current,
+                      [field.key]: event.target.value,
+                    }))
+                  }
+                  className={inputClass}
+                />
+              </Field>
+            ))}
+          </Card>
         )}
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <p className="text-xs font-semibold tracking-wider text-slate-500">
-            {t("app.employees.workflowsSection")}
-          </p>
+        <Card padded={false}>
+          <div className="border-b border-line px-5 py-4">
+            <CardHeader title={t("app.employees.workflowsSection")} />
+          </div>
           {linkedWorkflows.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">
-              {t("app.employees.workflowsEmpty")}
-            </p>
+            <EmptyState tone="violet"
+              icon={Workflow}
+              title={t("app.employees.workflowsEmpty")}
+              className="py-8"
+            />
           ) : (
-            <ul className="mt-3 space-y-2">
+            <ul className="divide-y divide-line">
               {linkedWorkflows.map((item) => (
-                <li
-                  key={item.id}
-                  className="rounded-xl border border-slate-800 px-3 py-2 text-sm text-slate-200"
-                >
-                  {item.title?.trim() || t("app.workflows.untitled")}
+                <li key={item.id} className="flex items-center gap-3 px-5 py-3 text-sm text-fg">
+                  <Workflow className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden="true" />
+                  <span className="min-w-0 truncate">
+                    {item.title?.trim() || t("app.workflows.untitled")}
+                  </span>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </Card>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
-          <p className="text-xs font-semibold tracking-wider text-slate-500">
-            {t("app.employees.activitySection")}
-          </p>
+        <Card padded={false}>
+          <div className="border-b border-line px-5 py-4">
+            <CardHeader title={t("app.employees.activitySection")} />
+          </div>
           {employeeActivity.length === 0 ? (
-            <p className="mt-3 text-sm text-slate-500">
-              {t("app.employees.activityEmpty")}
-            </p>
+            <EmptyState tone="violet"
+              icon={Activity}
+              title={t("app.employees.activityEmpty")}
+              className="py-8"
+            />
           ) : (
-            <ul className="mt-3 space-y-2">
+            <ul className="divide-y divide-line">
               {employeeActivity.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-start justify-between gap-3 rounded-xl border border-slate-800 px-3 py-2"
-                >
-                  <p className="min-w-0 truncate text-sm text-white">{item.detail}</p>
-                  <span className="shrink-0 text-xs text-slate-500">
+                <li key={item.id} className="flex items-start justify-between gap-3 px-5 py-3">
+                  <p className="min-w-0 truncate text-sm text-fg">{item.detail}</p>
+                  <span className="shrink-0 text-xs tabular-nums text-fg-subtle">
                     {relativeTime(item.createdAt, t("app.dashboard.justNow"))}
                   </span>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </Card>
 
-        <div className="flex items-center justify-end gap-3">
-          {saveError && <span className="text-sm text-red-400">{saveError}</span>}
-          {saved && (
-            <span className="text-sm text-emerald-400">{t("app.settings.saved")}</span>
-          )}
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving}
-            className="flex h-11 items-center rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-          >
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {saveError && <span className="text-sm text-danger-text">{saveError}</span>}
+          {saved && <span className="text-sm text-success-text">{t("app.settings.saved")}</span>}
+          <Button variant="primary" onClick={() => void handleSave()} loading={saving}>
             {saving ? t("app.common.saving") : t("app.common.save")}
-          </button>
+          </Button>
         </div>
       </section>
     </AppShell>

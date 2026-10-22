@@ -1,6 +1,10 @@
-import { CalendarClock, Loader2, Plus, Send, Trash2 } from "lucide-react";
+import { CalendarClock, Loader2, Plus, Send, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { Alert } from "../../components/ui/Alert";
+import { Button, IconButton } from "../../components/ui/Button";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { buttonClass, cardClass, cx, inputClass, navItemClass } from "../../components/ui/styles";
 import AppShell from "../../layouts/AppShell";
 import { useLocale } from "../../i18n/LocaleProvider";
 import {
@@ -21,6 +25,9 @@ const ERROR_KEYS: Record<string, string> = {
 };
 
 const NEEDS_SETTINGS = new Set(["AGENT_QUOTA", "AGENT_NO_KEY", "AI_KEY_INVALID"]);
+
+/** Limits and missing setup read as warnings; everything else is an error. */
+const WARNING_CODES = new Set(["AGENT_QUOTA", "AGENT_NO_KEY", "AI_RATE_LIMITED"]);
 
 function userTimezone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -74,28 +81,28 @@ function ActionCard({
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-slate-700 bg-slate-950/60 p-4">
-      <p className="flex items-center gap-2 text-xs font-semibold tracking-wide text-blue-300">
-        <CalendarClock className="h-4 w-4" />
+    <div className="mt-3 rounded-lg border border-line bg-surface-2 p-4">
+      <p className="flex items-center gap-2 text-xs font-semibold text-primary-text">
+        <CalendarClock className="h-4 w-4" aria-hidden="true" />
         {t(`app.agent.action.${kind}`)}
       </p>
-      <p className="mt-2 text-sm font-medium text-white">{summary.title}</p>
-      <p className="mt-1 text-sm text-slate-400">
+      <p className="mt-2 text-sm font-medium text-fg">{summary.title}</p>
+      <p className="mt-1 text-sm text-fg-muted">
         {formatWhen(summary.start, summary.timezone, localeTag)}
         {summary.end ? ` – ${formatWhen(summary.end, summary.timezone, localeTag)}` : ""}
         {summary.calendarName ? ` · ${summary.calendarName}` : ""}
       </p>
       {(summary.attendees ?? []).length > 0 && (
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-fg-subtle">
           {t("app.agent.action.guests")}: {summary.attendees?.join(", ")}
         </p>
       )}
-      {summary.addMeet && <p className="mt-1 text-xs text-slate-500">{t("app.agent.action.meet")}</p>}
+      {summary.addMeet && <p className="mt-1 text-xs text-fg-subtle">{t("app.agent.action.meet")}</p>}
       {conflicts.length > 0 && (
-        <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2">
-          <p className="text-xs font-medium text-amber-200">{t("app.agent.action.conflicts")}</p>
+        <div className="mt-2 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-2">
+          <p className="text-xs font-medium text-warning-text">{t("app.agent.action.conflicts")}</p>
           {conflicts.map((item) => (
-            <p key={item.id} className="text-xs text-amber-100/80">
+            <p key={item.id} className="text-xs text-fg-muted">
               {item.title} · {formatWhen(item.start, undefined, localeTag)}
             </p>
           ))}
@@ -103,27 +110,17 @@ function ActionCard({
       )}
 
       {action.status === "pending" && (
-        <div className="mt-3 flex gap-2">
-          <button
-            type="button"
-            onClick={() => run(true)}
-            disabled={busy}
-            className="flex h-9 items-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-60"
-          >
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="primary" size="sm" onClick={() => run(true)} disabled={busy}>
             {busy ? t("app.agent.action.confirming") : t("app.agent.action.confirm")}
-          </button>
-          <button
-            type="button"
-            onClick={() => run(false)}
-            disabled={busy}
-            className="flex h-9 items-center rounded-xl border border-slate-800 px-4 text-sm font-medium text-slate-300 transition hover:bg-slate-900 disabled:opacity-60"
-          >
+          </Button>
+          <Button size="sm" onClick={() => run(false)} disabled={busy}>
             {t("app.agent.action.cancel")}
-          </button>
+          </Button>
         </div>
       )}
       {action.status === "confirmed" && (
-        <p className="mt-3 text-sm text-emerald-400">
+        <p className="mt-3 text-sm text-success-text">
           {t("app.agent.action.confirmed")}
           {action.result?.htmlLink && (
             <>
@@ -132,7 +129,7 @@ function ActionCard({
                 href={action.result.htmlLink}
                 target="_blank"
                 rel="noreferrer"
-                className="text-blue-400 hover:text-blue-300"
+                className="font-medium text-primary-text hover:underline"
               >
                 {t("app.agent.action.openInCalendar")}
               </a>
@@ -141,15 +138,15 @@ function ActionCard({
         </p>
       )}
       {action.status === "canceled" && (
-        <p className="mt-3 text-sm text-slate-500">{t("app.agent.action.canceled")}</p>
+        <p className="mt-3 text-sm text-fg-subtle">{t("app.agent.action.canceled")}</p>
       )}
       {action.status === "expired" && (
-        <p className="mt-3 text-sm text-slate-500">{t("app.agent.action.expired")}</p>
+        <p className="mt-3 text-sm text-fg-subtle">{t("app.agent.action.expired")}</p>
       )}
       {action.status === "failed" && (
-        <p className="mt-3 text-sm text-red-400">{t("app.agent.action.failed")}</p>
+        <p className="mt-3 text-sm text-danger-text">{t("app.agent.action.failed")}</p>
       )}
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-danger-text">{error}</p>}
     </div>
   );
 }
@@ -274,161 +271,168 @@ export default function AgentPage() {
 
   return (
     <AppShell>
-      <section className="mx-auto flex h-[calc(100vh-10rem)] max-w-6xl gap-6">
-        <aside className="hidden w-64 shrink-0 flex-col rounded-2xl border border-slate-800 bg-slate-900/60 p-3 lg:flex">
-          <button
-            type="button"
-            onClick={newChat}
-            className="flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500"
-          >
-            <Plus className="h-4 w-4" />
-            {t("app.agent.newChat")}
-          </button>
-          <p className="px-2 pb-2 pt-5 text-xs font-semibold tracking-wider text-slate-500">
-            {t("app.agent.conversations")}
-          </p>
-          <div className="flex-1 space-y-1 overflow-y-auto">
-            {conversations.length === 0 && (
-              <p className="px-2 text-sm text-slate-500">{t("app.agent.noConversations")}</p>
-            )}
-            {conversations.map((item) => (
-              <div
-                key={item.id}
-                className={`group flex items-center rounded-xl ${
-                  item.id === conversationId ? "bg-blue-500/10" : "hover:bg-slate-900"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => openConversation(item.id)}
-                  className={`min-w-0 flex-1 truncate px-3 py-2 text-left text-sm ${
-                    item.id === conversationId ? "text-blue-300" : "text-slate-400"
-                  }`}
-                >
-                  {item.title}
-                </button>
-                <button
-                  type="button"
-                  aria-label={t("app.agent.deleteConversation")}
-                  onClick={() => removeConversation(item.id)}
-                  className="mr-1 hidden h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:text-red-400 group-hover:flex"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </aside>
+      {/* Viewport minus the AppShell top bar (4rem) and main's vertical padding (2×1.5rem, lg 2×2rem). */}
+      <section className="flex h-[calc(100svh-7rem)] min-h-[32rem] flex-col gap-5 lg:h-[calc(100svh-8rem)]">
+        <PageHeader icon={Sparkles} tone="primary" title={t("app.nav.assistant")} description={t("app.agent.subtitle")} />
 
-        <div className="flex min-w-0 flex-1 flex-col rounded-2xl border border-slate-800 bg-slate-900/60">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-5 py-3">
-            <button
-              type="button"
-              onClick={newChat}
-              className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200 lg:hidden"
-            >
-              <Plus className="h-4 w-4" />
+        <div className="flex min-h-0 flex-1 gap-6">
+          <aside className={cx(cardClass, "hidden w-64 shrink-0 flex-col p-3 lg:flex")}>
+            <Button variant="primary" block onClick={newChat}>
+              <Plus aria-hidden="true" />
               {t("app.agent.newChat")}
-            </button>
-            <p className="ml-auto text-xs text-slate-500">
-              {status?.ownKey
-                ? t("app.agent.ownKey", {
-                    provider: status.ownKey.provider === "openai" ? "OpenAI" : "Gemini",
-                  })
-                : status?.freeAvailable
-                  ? t(status.planActive ? "app.agent.planUsage" : "app.agent.usage", {
-                      used: status.usedToday,
-                      limit: status.dailyLimit,
-                    })
-                  : ""}
+            </Button>
+            <p className="px-2.5 pb-2 pt-5 text-[11px] font-medium uppercase tracking-wider text-fg-subtle">
+              {t("app.agent.conversations")}
             </p>
-          </div>
-
-          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-6">
-            {messages.length === 0 && !sending && (
-              <div className="mx-auto max-w-md pt-10 text-center">
-                <h2 className="text-xl font-semibold text-white">{t("app.agent.emptyTitle")}</h2>
-                <p className="mt-2 text-sm text-slate-400">{t("app.agent.emptyHint")}</p>
-                <div className="mt-6 flex flex-col gap-2">
-                  {suggestions.map((text) => (
-                    <button
-                      key={text}
-                      type="button"
-                      onClick={() => send(text)}
-                      className="rounded-xl border border-slate-800 px-4 py-2.5 text-sm text-slate-300 transition hover:border-slate-700 hover:bg-slate-900"
-                    >
-                      {text}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {messages.map((item) => (
-              <div
-                key={item.id}
-                className={`flex ${item.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
-                    item.role === "user"
-                      ? "bg-blue-600 text-white"
-                      : "border border-slate-800 bg-slate-950/40 text-slate-200"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{item.content}</p>
-                  {item.actions.map((action) => (
-                    <ActionCard
-                      key={action.id}
-                      action={action}
-                      localeTag={localeTag}
-                      onChange={updateAction}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-
-            {sending && (
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {t("app.agent.thinking")}
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
-
-          {errorCode && (
-            <div className="mx-5 mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-              {t(ERROR_KEYS[errorCode] ?? "app.agent.error")}
-              {NEEDS_SETTINGS.has(errorCode) && (
-                <>
-                  {" "}
-                  <Link to="/settings" className="font-medium text-blue-300 hover:text-blue-200">
-                    {t("app.agent.goToSettings")}
-                  </Link>
-                </>
+            <div className="flex-1 space-y-0.5 overflow-y-auto">
+              {conversations.length === 0 && (
+                <p className="px-2.5 text-sm text-fg-subtle">{t("app.agent.noConversations")}</p>
               )}
+              {conversations.map((item) => {
+                const active = item.id === conversationId;
+                return (
+                  <div key={item.id} className="group relative">
+                    <button
+                      type="button"
+                      onClick={() => openConversation(item.id)}
+                      aria-current={active ? "true" : undefined}
+                      className={navItemClass(active, "w-full pr-9 text-left")}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t("app.agent.deleteConversation")}
+                      onClick={() => removeConversation(item.id)}
+                      className="absolute right-1 top-1/2 hidden h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-fg-subtle transition-colors hover:bg-danger/10 hover:text-danger-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 group-focus-within:flex group-hover:flex"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </aside>
 
-          <form onSubmit={handleSubmit} className="flex gap-2 border-t border-slate-800 p-4">
-            <input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder={t("app.agent.placeholder")}
-              maxLength={4000}
-              className="min-w-0 flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-            />
-            <button
-              type="submit"
-              disabled={sending || !input.trim()}
-              aria-label={t("app.agent.send")}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-500 disabled:opacity-60"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </form>
+          <div className={cx(cardClass, "flex min-w-0 flex-1 flex-col overflow-hidden")}>
+            <div className="flex min-h-12 items-center justify-between gap-3 border-b border-line px-4 py-2 sm:px-5">
+              <Button variant="ghost" size="sm" onClick={newChat} className="-ml-1.5 lg:hidden">
+                <Plus aria-hidden="true" />
+                {t("app.agent.newChat")}
+              </Button>
+              <p className="ml-auto text-xs tabular-nums text-fg-subtle">
+                {status?.ownKey
+                  ? t("app.agent.ownKey", {
+                      provider: status.ownKey.provider === "openai" ? "OpenAI" : "Gemini",
+                    })
+                  : status?.freeAvailable
+                    ? t(status.planActive ? "app.agent.planUsage" : "app.agent.usage", {
+                        used: status.usedToday,
+                        limit: status.dailyLimit,
+                      })
+                    : ""}
+              </p>
+            </div>
+
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-6">
+              {messages.length === 0 && !sending && (
+                <div className="mx-auto max-w-md pt-8 text-center">
+                  <div className="relative mx-auto mb-5 w-fit">
+                    <span
+                      aria-hidden="true"
+                      className="absolute -inset-6 rounded-full bg-gradient-to-br from-primary/25 to-tint-violet/20 blur-2xl"
+                    />
+                    <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-tint-violet text-white shadow-overlay">
+                      <Sparkles className="h-7 w-7" aria-hidden="true" />
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-semibold tracking-tight text-fg">{t("app.agent.emptyTitle")}</h2>
+                  <p className="mt-1 text-sm text-fg-muted">{t("app.agent.emptyHint")}</p>
+                  <div className="mt-6 flex flex-col gap-2">
+                    {suggestions.map((text) => (
+                      <button
+                        key={text}
+                        type="button"
+                        onClick={() => send(text)}
+                        className="rounded-lg border border-line bg-surface px-4 py-2.5 text-sm text-fg-muted transition-colors hover:bg-surface-2 hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      >
+                        {text}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {messages.map((item) => (
+                <div
+                  key={item.id}
+                  className={cx("flex", item.role === "user" ? "justify-end" : "justify-start")}
+                >
+                  <div
+                    className={cx(
+                      "max-w-[85%] rounded-xl px-4 py-3 text-sm leading-6",
+                      item.role === "user"
+                        ? "bg-primary text-primary-fg"
+                        : "border border-line bg-surface text-fg shadow-card",
+                    )}
+                  >
+                    <p className="whitespace-pre-wrap">{item.content}</p>
+                    {item.actions.map((action) => (
+                      <ActionCard
+                        key={action.id}
+                        action={action}
+                        localeTag={localeTag}
+                        onChange={updateAction}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {sending && (
+                <div className="flex items-center gap-2 text-sm text-fg-subtle">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  {t("app.agent.thinking")}
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {errorCode && (
+              <Alert
+                tone={WARNING_CODES.has(errorCode) ? "warning" : "danger"}
+                className="mx-4 mb-3 sm:mx-5"
+                action={
+                  NEEDS_SETTINGS.has(errorCode) ? (
+                    <Link to="/settings" className={buttonClass({ variant: "secondary", size: "sm" })}>
+                      {t("app.agent.goToSettings")}
+                    </Link>
+                  ) : undefined
+                }
+              >
+                {t(ERROR_KEYS[errorCode] ?? "app.agent.error")}
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-line p-3 sm:p-4">
+              <input
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder={t("app.agent.placeholder")}
+                aria-label={t("app.agent.placeholder")}
+                maxLength={4000}
+                className={cx(inputClass, "min-w-0 flex-1")}
+              />
+              <IconButton
+                type="submit"
+                variant="primary"
+                disabled={sending || !input.trim()}
+                aria-label={t("app.agent.send")}
+              >
+                <Send />
+              </IconButton>
+            </form>
+          </div>
         </div>
       </section>
     </AppShell>

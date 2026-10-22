@@ -4,6 +4,28 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap"
+    />
+    <script>
+      // Apply the theme before first paint (mirrors src/theme/theme.ts) to avoid a flash.
+      (function () {
+        var theme = "dark";
+        try {
+          var path = location.pathname;
+          var landing = path === "/" || path === "/pt" || path === "/es";
+          var pref = localStorage.getItem("lunyo.theme");
+          if (!landing) {
+            if (pref === "light" || pref === "dark") theme = pref;
+            else theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+          }
+        } catch (e) {}
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
     <title>Lunyon</title>
   </head>
   <body>

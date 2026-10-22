@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { locale } = useLocale();
 
   if (loading) {
-    return <div className="min-h-screen bg-slate-950" />;
+    return <div className="min-h-screen bg-canvas" />;
   }
 
   if (recovering) {

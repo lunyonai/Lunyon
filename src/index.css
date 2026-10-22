@@ -1,27 +1,201 @@
 @import "tailwindcss";
 
-:root {
-  /* Surfaces */
+/*
+ * Theming: semantic tokens live in --ui-* variables and switch with [data-theme] on <html>
+ * (set by ThemeProvider and the inline script in index.html). Components use the Tailwind
+ * utilities generated below (bg-surface, text-fg-muted, border-line, bg-primary, ...),
+ * never raw palette colors, so both themes stay in sync.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-canvas: var(--ui-canvas);
+  --color-surface: var(--ui-surface);
+  --color-surface-2: var(--ui-surface-2);
+  --color-surface-3: var(--ui-surface-3);
+  --color-line: var(--ui-line);
+  --color-line-strong: var(--ui-line-strong);
+
+  --color-fg: var(--ui-fg);
+  --color-fg-muted: var(--ui-fg-muted);
+  --color-fg-subtle: var(--ui-fg-subtle);
+  --color-fg-placeholder: var(--ui-fg-placeholder);
+
+  --color-primary: var(--ui-primary);
+  --color-primary-hover: var(--ui-primary-hover);
+  --color-primary-fg: var(--ui-primary-fg);
+  --color-primary-text: var(--ui-primary-text);
+
+  --color-success: var(--ui-success);
+  --color-success-text: var(--ui-success-text);
+  --color-warning: var(--ui-warning);
+  --color-warning-text: var(--ui-warning-text);
+  --color-danger: var(--ui-danger);
+  --color-danger-hover: var(--ui-danger-hover);
+  --color-danger-text: var(--ui-danger-text);
+
+  /* Identity tints for icon tiles (decorative; never status). */
+  --color-tint-violet: var(--ui-tint-violet);
+  --color-tint-orange: var(--ui-tint-orange);
+  --color-tint-cyan: var(--ui-tint-cyan);
+  --color-tint-rose: var(--ui-tint-rose);
+  --color-tint-amber: var(--ui-tint-amber);
+  --color-tint-emerald: var(--ui-tint-emerald);
+
+  /* Categorical chart series (validated for both surfaces with the dataviz checker). */
+  --color-viz-1: var(--ui-viz-1);
+  --color-viz-2: var(--ui-viz-2);
+  --color-viz-3: var(--ui-viz-3);
+
+  --shadow-card: var(--ui-shadow-card);
+  --shadow-card-hover: var(--ui-shadow-card-hover);
+  --shadow-overlay: var(--ui-shadow-overlay);
+}
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --ui-canvas: #f6f7f9;
+  --ui-surface: #ffffff;
+  --ui-surface-2: #f2f4f7;
+  --ui-surface-3: #e8ebf0;
+  --ui-line: #e3e6eb;
+  --ui-line-strong: #cfd4dc;
+
+  --ui-fg: #0f172a;
+  --ui-fg-muted: #475569;
+  --ui-fg-subtle: #64748b;
+  --ui-fg-placeholder: #94a3b8;
+
+  --ui-primary: #2563eb;
+  --ui-primary-hover: #1d4ed8;
+  --ui-primary-fg: #ffffff;
+  --ui-primary-text: #1d4ed8;
+
+  --ui-success: #10b981;
+  --ui-success-text: #047857;
+  --ui-warning: #f59e0b;
+  --ui-warning-text: #b45309;
+  --ui-danger: #dc2626;
+  --ui-danger-hover: #b91c1c;
+  --ui-danger-text: #b91c1c;
+
+  --ui-tint-violet: #7c3aed;
+  --ui-tint-orange: #ea580c;
+  --ui-tint-cyan: #0891b2;
+  --ui-tint-rose: #e11d48;
+  --ui-tint-amber: #d97706;
+  --ui-tint-emerald: #059669;
+
+  --ui-viz-1: #2a78d6;
+  --ui-viz-2: #eb6834;
+  --ui-viz-3: #6250d6;
+
+  --ui-glow-1: rgba(37, 99, 235, 0.07);
+  --ui-glow-2: rgba(124, 58, 237, 0.05);
+
+  --ui-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --ui-shadow-card-hover: 0 8px 24px -10px rgba(15, 23, 42, 0.16), 0 2px 4px rgba(15, 23, 42, 0.05);
+  --ui-shadow-overlay: 0 12px 32px -8px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.06);
+
+  /* Legacy brand variables (login screens); the landing page always renders dark. */
+  --lunyo-bg: var(--ui-canvas);
+  --lunyo-surface: var(--ui-surface-2);
+  --lunyo-surface-elevated: var(--ui-surface);
+  --lunyo-border: var(--ui-line);
+  --lunyo-primary: var(--ui-primary);
+  --lunyo-primary-soft: rgba(37, 99, 235, 0.1);
+  --lunyo-success: var(--ui-success-text);
+  --lunyo-text: var(--ui-fg);
+  --lunyo-text-muted: var(--ui-fg-muted);
+  --lunyo-network-line: rgba(100, 116, 139, 0.16);
+  --lunyo-network-pulse: rgba(37, 99, 235, 0.6);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ui-canvas: #0a0e15;
+  --ui-surface: #10151e;
+  --ui-surface-2: #161c27;
+  --ui-surface-3: #1e2532;
+  --ui-line: #1f2733;
+  --ui-line-strong: #2c3544;
+
+  --ui-fg: #e8ecf3;
+  --ui-fg-muted: #a1abbd;
+  --ui-fg-subtle: #7b8698;
+  --ui-fg-placeholder: #566174;
+
+  --ui-primary: #2563eb;
+  --ui-primary-hover: #3b82f6;
+  --ui-primary-fg: #ffffff;
+  --ui-primary-text: #60a5fa;
+
+  --ui-success: #10b981;
+  --ui-success-text: #34d399;
+  --ui-warning: #f59e0b;
+  --ui-warning-text: #fbbf24;
+  --ui-danger: #dc2626;
+  --ui-danger-hover: #ef4444;
+  --ui-danger-text: #f87171;
+
+  --ui-tint-violet: #a78bfa;
+  --ui-tint-orange: #fb923c;
+  --ui-tint-cyan: #22d3ee;
+  --ui-tint-rose: #fb7185;
+  --ui-tint-amber: #fbbf24;
+  --ui-tint-emerald: #34d399;
+
+  --ui-viz-1: #3987e5;
+  --ui-viz-2: #d95926;
+  --ui-viz-3: #9085e9;
+
+  --ui-glow-1: rgba(59, 130, 246, 0.10);
+  --ui-glow-2: rgba(139, 92, 246, 0.07);
+
+  /* Dark cards read as raised panes via a faint top highlight instead of a drop shadow. */
+  --ui-shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.035);
+  --ui-shadow-card-hover: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 12px 28px -12px rgba(0, 0, 0, 0.7);
+  --ui-shadow-overlay: 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.02);
+
   --lunyo-bg: #020617;
   --lunyo-surface: #0b1220;
   --lunyo-surface-elevated: #111827;
   --lunyo-border: rgba(148, 163, 184, 0.14);
-
-  /* Brand */
   --lunyo-primary: #2563eb;
   --lunyo-primary-soft: rgba(37, 99, 235, 0.14);
   --lunyo-success: #34d399;
-
-  /* Text */
   --lunyo-text: #e8eef9;
   --lunyo-text-muted: #94a3b8;
+  --lunyo-network-line: rgba(100, 116, 139, 0.12);
+  --lunyo-network-pulse: rgba(96, 165, 250, 0.75);
+}
 
+:root {
   /* Rhythm */
   --lunyo-radius: 0.5rem;
   --lunyo-duration: 420ms;
   --lunyo-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
 
-  /* Network (canvas / supporting visuals) */
-  --lunyo-network-line: rgba(100, 116, 139, 0.12);
-  --lunyo-network-pulse: rgba(96, 165, 250, 0.75);
+@layer base {
+  html {
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--ui-canvas);
+    color: var(--ui-fg);
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--ui-primary) 25%, transparent);
+  }
 }
