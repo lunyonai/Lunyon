@@ -1,4 +1,4 @@
-import { CalendarDays, Plus, Sparkles } from "lucide-react";
+import { Bot, CalendarDays, Plus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../../components/ui/Button";
 import { buttonClass, cardClass, cx } from "../../../components/ui/styles";
@@ -44,7 +44,7 @@ export default function DashboardHeader() {
   ];
 
   return (
-    <section className={cx(cardClass, "relative isolate overflow-hidden p-6 sm:p-8")}>
+    <section className={cx(cardClass, "relative isolate flex flex-col justify-center overflow-hidden p-6 sm:p-8")}>
       {/* Decorative brand layers: color wash + fading grid. */}
       <div
         aria-hidden="true"
@@ -92,9 +92,9 @@ export default function DashboardHeader() {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Link to="/assistant" className={buttonClass({ variant: "secondary", size: "lg" })}>
-            <Sparkles className="text-primary-text" />
-            {t("app.dashboard.openAssistant")}
+          <Link to="/employees" className={buttonClass({ variant: "secondary", size: "lg" })}>
+            <Bot className="text-tint-violet" />
+            {t("app.nav.employees")}
           </Link>
           <Button
             variant="primary"

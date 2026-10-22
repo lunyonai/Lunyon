@@ -7,6 +7,7 @@ import {
 
 import type { Session, User } from "@supabase/supabase-js";
 
+import { clearMailCache } from "../features/mail/mailCache";
 import { api, type MeResponse } from "../lib/api";
 import { markOAuthPending, oauthRedirectTo } from "../lib/oauthRedirect";
 import { authService } from "../services/authService";
@@ -162,6 +163,8 @@ export function AuthProvider({
   async function logout() {
     const { error } = await authService.signOut();
     if (error) throw error;
+    // Don't keep the previous user's mail in memory after signing out.
+    clearMailCache();
   }
 
   async function updateProfile(fullName: string) {

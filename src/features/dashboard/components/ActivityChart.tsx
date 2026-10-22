@@ -1,12 +1,9 @@
 import { useMemo, useState } from "react";
 import { Card, CardHeader } from "../../../components/ui/Card";
 import { cx } from "../../../components/ui/styles";
-import { localeMeta, type Locale } from "../../../i18n/config";
 import { useLocale } from "../../../i18n/LocaleProvider";
-import type { ActivityRecord } from "../../../lib/api";
 import { useActivity } from "../../activity/ActivityContext";
-
-type SeriesKey = ActivityRecord["type"];
+import { buildDayBuckets, type SeriesKey } from "../activitySeries";
 
 /** Fixed categorical order (validated palette): color follows the type, never its rank. */
 const SERIES: Array<{ key: SeriesKey; swatch: string; label: string }> = [
@@ -14,48 +11,6 @@ const SERIES: Array<{ key: SeriesKey; swatch: string; label: string }> = [
   { key: "workflow", swatch: "bg-viz-2", label: "app.dashboard.filterWorkflow" },
   { key: "employee", swatch: "bg-viz-3", label: "app.dashboard.filterEmployee" },
 ];
-
-type DayBucket = {
-  key: string;
-  short: string;
-  long: string;
-  isToday: boolean;
-  counts: Record<SeriesKey, number>;
-  total: number;
-};
-
-function localDayKey(date: Date) {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-}
-
-/** Last seven local days (oldest first) with run counts per type. */
-function buildBuckets(activities: ActivityRecord[], locale: Locale): DayBucket[] {
-  const lang = localeMeta[locale].htmlLang;
-  const shortFmt = new Intl.DateTimeFormat(lang, { weekday: "short" });
-  const longFmt = new Intl.DateTimeFormat(lang, { weekday: "long", day: "numeric", month: "short" });
-  const today = new Date();
-  const buckets: DayBucket[] = [];
-  for (let offset = 6; offset >= 0; offset -= 1) {
-    const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - offset);
-    const long = longFmt.format(date);
-    buckets.push({
-      key: localDayKey(date),
-      short: shortFmt.format(date).replace(".", ""),
-      long: long.charAt(0).toUpperCase() + long.slice(1),
-      isToday: offset === 0,
-      counts: { prompt: 0, workflow: 0, employee: 0 },
-      total: 0,
-    });
-  }
-  const byKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
-  for (const activity of activities) {
-    const bucket = byKey.get(localDayKey(new Date(activity.createdAt)));
-    if (!bucket) continue;
-    bucket.counts[activity.type] += 1;
-    bucket.total += 1;
-  }
-  return buckets;
-}
 
 /** Round the axis top up to a multiple of 4 so the mid gridline is a whole number. */
 function niceMax(value: number) {
@@ -68,7 +23,7 @@ export default function ActivityChart() {
   const { activities } = useActivity();
   const [active, setActive] = useState<number | null>(null);
 
-  const buckets = useMemo(() => buildBuckets(activities, locale), [activities, locale]);
+  const buckets = useMemo(() => buildDayBuckets(activities, locale), [activities, locale]);
   const max = niceMax(Math.max(0, ...buckets.map((bucket) => bucket.total)));
   const weekTotal = buckets.reduce((sum, bucket) => sum + bucket.total, 0);
   const ticks = [max, max / 2, 0];

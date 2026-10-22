@@ -6,7 +6,9 @@ import { getGmailConnectionStatus, getValidGmailAccessToken } from "./gmailConne
 import { mapGoogleApiError } from "./googleOAuth.js";
 
 const GMAIL_BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
-const METADATA_CONCURRENCY = 10;
+// One round for a full 20-message page; 20 × messages.get (5 units each) stays well under
+// Gmail's per-user quota of 250 units/second.
+const METADATA_CONCURRENCY = 20;
 
 export type GmailMessageSummary = {
   id: string;

@@ -17,8 +17,12 @@ export const es: Messages = {
     language: "Idioma",
     homeAria: "Inicio de Lunyon",
     footerAria: "Pie de página",
+    howItWorks: "Cómo funciona",
+    footerExplore: "Explorar",
+    footerAccount: "Cuenta",
   },
   hero: {
+    eyebrow: "Tu equipo de IA, listo para trabajar",
     headline: "Recupera tu tiempo.",
     body: "Lunyon convierte el trabajo repetitivo en flujos automáticos, para que puedas centrarte en lo que importa.",
     getStarted: "Empezar",
@@ -40,6 +44,7 @@ export const es: Messages = {
     recentActivity: "ACTIVIDAD RECIENTE",
   },
   problem: {
+    eyebrow: "El problema",
     headline: "Tu día está lleno de trabajo que no debería necesitarte.",
     supporting:
       "Lo importante suele quedar enterrado bajo lo repetitivo.",
@@ -132,6 +137,7 @@ export const es: Messages = {
       "Cada capacidad cubre un tipo de trabajo. Juntas mantienen la información en movimiento sin devolverte a los detalles.",
   },
   useCases: {
+    eyebrow: "Casos de uso",
     headline: "¿Qué podría quitarte Lunyon de encima hoy?",
     moments: [
       {
@@ -153,6 +159,7 @@ export const es: Messages = {
     ],
   },
   calculator: {
+    eyebrow: "Calculadora de tiempo",
     headline: "Tu tiempo tiene valor.",
     question: "¿Cuánto tiempo te quitan las tareas repetitivas cada semana?",
     hourWeek: "{count} hora / semana",
@@ -299,6 +306,15 @@ export const es: Messages = {
       chartDay: "Día",
       quickTitle: "Accesos rápidos",
       openAssistant: "Abrir asistente",
+      askTitle: "Pregúntale a Lunyon",
+      askHint: "Tu asistente lee tu agenda y tus correos y prepara acciones para que las confirmes.",
+      askPlaceholder: "Pregunta algo o pide una tarea…",
+      askSubmit: "Enviar al asistente",
+      vsYesterday: "{delta} vs ayer",
+      viewAll: "Ver todo",
+      calendarConnectHint: "Conecta Google Calendar para ver aquí las reuniones de hoy.",
+      inboxEmpty: "Tu bandeja de entrada está vacía.",
+      unreadCount: "{count} sin leer",
       statusFailed: "Falló",
       feedTitle: "Feed de operaciones",
       feedSubtitle: "Todo lo que tu sistema de IA está haciendo.",

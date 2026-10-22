@@ -1,8 +1,8 @@
 import { motion, useAnimationFrame, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "../../i18n/LocaleProvider";
-
-const ease = [0.22, 1, 0.36, 1] as const;
+import SectionHeader from "./SectionHeader";
+import { reveal } from "./landingMotion";
 
 type NodeRole = "in" | "worker" | "out";
 
@@ -132,10 +132,12 @@ function WorkforceDiagram({ compact }: { compact: boolean }) {
   const nodeEls = useRef<Record<string, SVGCircleElement | null>>({});
   const lastTimeRef = useRef(0);
 
-  layoutRef.current = layout;
-  inViewRef.current = inView;
+  useEffect(() => {
+    inViewRef.current = inView;
+  }, [inView]);
 
   useEffect(() => {
+    layoutRef.current = layout;
     pulsesRef.current = createPulses(layout);
     ringsRef.current = [];
     activationRef.current = {};
@@ -250,7 +252,28 @@ function WorkforceDiagram({ compact }: { compact: boolean }) {
   });
 
   return (
-    <div ref={wrapRef} className="mt-14 w-full overflow-hidden">
+    <div
+      ref={wrapRef}
+      className="relative isolate mt-14 w-full overflow-hidden rounded-3xl border border-line bg-surface/50 px-3 py-8 shadow-card backdrop-blur-sm sm:mt-16 sm:px-8 sm:py-12"
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(50% 60% at 50% 50%, color-mix(in srgb, var(--ui-primary) 14%, transparent), transparent 70%), radial-gradient(40% 50% at 50% 100%, color-mix(in srgb, var(--ui-tint-emerald) 8%, transparent), transparent 70%)",
+        }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 opacity-50"
+        style={{
+          backgroundImage: "radial-gradient(var(--ui-line-strong) 1px, transparent 1px)",
+          backgroundSize: "22px 22px",
+          maskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 80%)",
+          WebkitMaskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 80%)",
+        }}
+      />
       <svg
         viewBox={layout.viewBox}
         className="mx-auto h-auto w-full max-w-4xl"
@@ -330,7 +353,6 @@ function WorkforceDiagram({ compact }: { compact: boolean }) {
 }
 
 export default function ConnectedWorkforceSection() {
-  const reduceMotion = useReducedMotion();
   const [compact, setCompact] = useState(false);
   const { t } = useLocale();
 
@@ -343,31 +365,23 @@ export default function ConnectedWorkforceSection() {
   }, []);
 
   return (
-    <section className="relative bg-transparent py-24 sm:py-28">
-      <div className="mx-auto max-w-6xl px-6">
-        <motion.h2
-          initial={reduceMotion ? false : { opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5, ease }}
-          className="max-w-3xl text-3xl font-semibold tracking-tight text-[var(--lunyo-text)] md:text-4xl"
-        >
-          {t("workforce.headline1")}
-          <br />
-          {t("workforce.headline2")}
-        </motion.h2>
+    <section className="relative py-20 sm:py-28">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHeader
+          eyebrow={t("product.tabEmployees")}
+          title={
+            <>
+              {t("workforce.headline1")}
+              <br />
+              {t("workforce.headline2")}
+            </>
+          }
+          subtitle={t("workforce.supporting")}
+        />
 
-        <motion.p
-          initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5, delay: 0.08, ease }}
-          className="mt-5 max-w-xl text-base leading-7 text-[var(--lunyo-text-muted)] sm:text-lg"
-        >
-          {t("workforce.supporting")}
-        </motion.p>
-
-        <WorkforceDiagram compact={compact} />
+        <motion.div {...reveal(0.1, 24)}>
+          <WorkforceDiagram compact={compact} />
+        </motion.div>
       </div>
     </section>
   );

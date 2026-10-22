@@ -17,6 +17,8 @@ import NotificationsPopover from "../features/notifications/NotificationsPopover
 import { NavLink, useLocation } from "react-router-dom";
 import { IconButton } from "../components/ui/Button";
 import { cx, navItemClass } from "../components/ui/styles";
+import { prefetchInbox } from "../features/mail/mailCache";
+import { useAuth } from "../hooks/useAuth";
 import { useLocale } from "../i18n/LocaleProvider";
 import ThemeToggle from "../theme/ThemeToggle";
 import UserMenu from "./UserMenu";
@@ -59,6 +61,7 @@ function sectionTitle(pathname: string, t: (path: string) => string): string {
 export default function AppShell({ children }: AppShellProps) {
   const { t } = useLocale();
   const { pathname } = useLocation();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const section = sectionTitle(pathname, t);
 
@@ -71,6 +74,10 @@ export default function AppShell({ children }: AppShellProps) {
   }, []);
 
   const closeSidebar = () => setSidebarOpen(false);
+  // Hovering the Mail link starts loading the inbox, so the page usually opens with data ready.
+  const warmInbox = () => {
+    if (user?.id && pathname !== "/mail") prefetchInbox(user.id);
+  };
 
   const nav = (
     <>
@@ -87,6 +94,8 @@ export default function AppShell({ children }: AppShellProps) {
                 key={item.key}
                 to={item.to}
                 onClick={closeSidebar}
+                onMouseEnter={item.key === "mail" ? warmInbox : undefined}
+                onFocus={item.key === "mail" ? warmInbox : undefined}
                 className={({ isActive }) => sidebarItemClass(isActive)}
               >
                 <Icon aria-hidden="true" />

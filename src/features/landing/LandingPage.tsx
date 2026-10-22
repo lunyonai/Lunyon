@@ -1,4 +1,5 @@
 import { useLayoutEffect } from "react";
+import { MotionConfig } from "framer-motion";
 import { useLocation } from "react-router-dom";
 import TopNav from "./TopNav";
 import HeroSection from "./HeroSection";
@@ -28,24 +29,29 @@ export default function LandingPage() {
   }, [hash]);
 
   return (
-    <div className="relative min-h-screen text-[var(--lunyo-text)]">
-      <NeuralBackground preset="landing" />
+    <MotionConfig reducedMotion="user">
+      <div className="relative min-h-screen bg-canvas text-fg">
+        {/* Neural canvas stays as the backdrop, dimmed so it never competes with the content. */}
+        <div className="opacity-60">
+          <NeuralBackground preset="landing" />
+        </div>
 
-      <div className="relative z-10">
-        <TopNav />
-        <main className="overflow-x-hidden">
-          <HeroSection />
-          <ProblemSection />
-          <HowItWorksSection />
-          <ConnectedWorkforceSection />
-          <FeaturesSection />
-          <UseCasesSection />
-          <TimeCalculatorSection />
-          <PricingSection />
-          <CTASection />
-        </main>
-        <LandingFooter />
+        <div className="relative z-10">
+          <TopNav />
+          <main className="overflow-x-clip">
+            <HeroSection />
+            <ProblemSection />
+            <HowItWorksSection />
+            <ConnectedWorkforceSection />
+            <FeaturesSection />
+            <UseCasesSection />
+            <TimeCalculatorSection />
+            <PricingSection />
+            <CTASection />
+          </main>
+          <LandingFooter />
+        </div>
       </div>
-    </div>
+    </MotionConfig>
   );
 }

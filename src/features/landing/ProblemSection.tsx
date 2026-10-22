@@ -1,68 +1,52 @@
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
+import { FileText, ListChecks, Mail, Repeat2, Search, Send, Users, type LucideIcon } from "lucide-react";
+import { IconTile, type TileTone } from "../../components/ui/IconTile";
 import { useLocale } from "../../i18n/LocaleProvider";
+import GlowCard from "./GlowCard";
+import SectionHeader from "./SectionHeader";
+import { reveal } from "./landingMotion";
 
-const ease = [0.22, 1, 0.36, 1] as const;
+/** Icon + tone per item, in the same order as `problem.items`. */
+const visuals: Array<{ icon: LucideIcon; tone: TileTone }> = [
+  { icon: Mail, tone: "primary" },
+  { icon: Users, tone: "violet" },
+  { icon: FileText, tone: "orange" },
+  { icon: Search, tone: "cyan" },
+  { icon: Send, tone: "rose" },
+  { icon: ListChecks, tone: "emerald" },
+];
 
 export default function ProblemSection() {
-  const reduceMotion = useReducedMotion();
   const { messages } = useLocale();
   const copy = messages.problem;
 
   return (
-    <section className="relative bg-transparent py-24 sm:py-28">
-      <div className="mx-auto max-w-6xl px-6">
-        <motion.h2
-          initial={reduceMotion ? false : { opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5, ease }}
-          className="max-w-3xl text-3xl font-semibold tracking-tight text-[var(--lunyo-text)] md:text-4xl"
-        >
-          {copy.headline}
-        </motion.h2>
+    <section className="relative py-20 sm:py-28">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHeader eyebrow={copy.eyebrow} title={copy.headline} subtitle={copy.supporting} />
 
-        <motion.p
-          initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.5, delay: 0.08, ease }}
-          className="mt-5 max-w-xl text-base leading-7 text-[var(--lunyo-text-muted)] sm:text-lg"
-        >
-          {copy.supporting}
-        </motion.p>
-
-        <ul className="mt-14 max-w-2xl">
-          {copy.items.map((item, index) => (
-            <motion.li
-              key={item}
-              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{
-                duration: 0.45,
-                delay: reduceMotion ? 0 : index * 0.07,
-                ease,
-              }}
-              className="flex items-baseline gap-4 border-b border-[var(--lunyo-border)] py-4 first:border-t"
-            >
-              <span className="w-7 shrink-0 text-xs tabular-nums text-[var(--lunyo-text-muted)]">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <span className="text-base text-[var(--lunyo-text)]/90 sm:text-lg">
-                {item}
-              </span>
-            </motion.li>
-          ))}
+        <ul className="mt-14 grid gap-3 sm:mt-16 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          {copy.items.map((item, index) => {
+            const visual = visuals[index % visuals.length];
+            return (
+              <motion.li key={item} {...reveal(index * 0.05, 14)}>
+                <GlowCard className="flex h-full items-center gap-4 p-4 sm:p-5">
+                  <IconTile icon={visual.icon} tone={visual.tone} size="md" />
+                  <span className="min-w-0 flex-1 text-[15px] font-medium leading-6 text-fg">{item}</span>
+                  <Repeat2 className="h-4 w-4 shrink-0 text-fg-subtle/60" aria-hidden="true" />
+                </GlowCard>
+              </motion.li>
+            );
+          })}
         </ul>
 
         <motion.p
-          initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-40px" }}
-          transition={{ duration: 0.5, delay: 0.12, ease }}
-          className="mt-14 max-w-xl text-xl font-medium tracking-tight text-[var(--lunyo-text)] sm:text-2xl"
+          {...reveal(0.1, 12)}
+          className="mx-auto mt-14 max-w-2xl text-balance text-center text-2xl font-semibold tracking-tight sm:text-3xl"
         >
-          {copy.close}
+          <span className="bg-gradient-to-r from-primary-text via-tint-violet to-tint-cyan bg-clip-text text-transparent">
+            {copy.close}
+          </span>
         </motion.p>
       </div>
     </section>

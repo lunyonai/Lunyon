@@ -1,6 +1,6 @@
 import { CalendarClock, Loader2, Plus, Send, Sparkles, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useEffectEvent, useRef, useState, type FormEvent } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Alert } from "../../components/ui/Alert";
 import { Button, IconButton } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -153,6 +153,8 @@ function ActionCard({
 
 export default function AgentPage() {
   const { t, locale } = useLocale();
+  const location = useLocation();
+  const navigate = useNavigate();
   const localeTag = locale === "pt" ? "pt-BR" : locale === "es" ? "es" : "en";
   const [status, setStatus] = useState<AgentStatus | null>(null);
   const [conversations, setConversations] = useState<AgentConversation[]>([]);
@@ -262,6 +264,20 @@ export default function AgentPage() {
     event.preventDefault();
     void send(input);
   }
+
+  // A question typed on the dashboard arrives as router state: send it once, then clear the
+  // state so a reload or back-navigation doesn't send it again.
+  const handedPrompt = useRef((location.state as { prompt?: unknown } | null)?.prompt);
+  const sendHandedPrompt = useEffectEvent((prompt: string) => {
+    void send(prompt);
+  });
+  useEffect(() => {
+    const prompt = handedPrompt.current;
+    if (typeof prompt !== "string" || !prompt.trim()) return;
+    handedPrompt.current = undefined;
+    navigate(".", { replace: true, state: null });
+    sendHandedPrompt(prompt);
+  }, [navigate]);
 
   const suggestions = [
     t("app.agent.suggestion1"),

@@ -15,8 +15,12 @@ export const en = {
     language: "Language",
     homeAria: "Lunyon home",
     footerAria: "Footer",
+    howItWorks: "How it works",
+    footerExplore: "Explore",
+    footerAccount: "Account",
   },
   hero: {
+    eyebrow: "Your AI workforce, ready to work",
     headline: "Reclaim Your Time.",
     body: "Lunyon turns repetitive work into automated workflows, giving you more time to focus on what matters.",
     getStarted: "Get Started",
@@ -38,6 +42,7 @@ export const en = {
     recentActivity: "RECENT ACTIVITY",
   },
   problem: {
+    eyebrow: "The problem",
     headline: "Your day is full of work that shouldn't need you.",
     supporting: "Important work often gets buried under repetitive work.",
     close: "Lunyon takes that work off your plate.",
@@ -129,6 +134,7 @@ export const en = {
       "Each capability handles a distinct type of work. Together they keep information moving without pulling you back into the details.",
   },
   useCases: {
+    eyebrow: "Use cases",
     headline: "What could Lunyon take off your plate today?",
     moments: [
       {
@@ -150,6 +156,7 @@ export const en = {
     ],
   },
   calculator: {
+    eyebrow: "Time calculator",
     headline: "Your time has value.",
     question: "How much time do repetitive tasks take every week?",
     hourWeek: "{count} hour / week",
@@ -296,6 +303,15 @@ export const en = {
       chartDay: "Day",
       quickTitle: "Quick actions",
       openAssistant: "Open assistant",
+      askTitle: "Ask Lunyon",
+      askHint: "Your assistant reads your calendar and inbox and prepares actions for you to confirm.",
+      askPlaceholder: "Ask anything or give a task…",
+      askSubmit: "Send to assistant",
+      vsYesterday: "{delta} vs yesterday",
+      viewAll: "View all",
+      calendarConnectHint: "Connect Google Calendar to see today's meetings here.",
+      inboxEmpty: "Your inbox is empty.",
+      unreadCount: "{count} unread",
       statusFailed: "Failed",
       feedTitle: "Operations Feed",
       feedSubtitle: "Everything your AI system is doing.",

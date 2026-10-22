@@ -45,6 +45,8 @@ type CalendarListEntry = {
 
 const MAX_EVENTS = 150;
 const READABLE_ROLES = new Set(["owner", "writer", "reader"]);
+/** Google's calendar list changes rarely; the Calendar page asks for it 3× in parallel per load. */
+const CALENDAR_LIST_TTL_MS = 60_000;
 
 async function googleJson<T>(url: string, token: string): Promise<T> {
   const response = await fetch(url, {
@@ -75,6 +77,28 @@ async function fetchCalendarList(token: string): Promise<CalendarListEntry[]> {
   return items;
 }
 
+const calendarListCache = new Map<string, { items: CalendarListEntry[]; expiresAt: number }>();
+const calendarListInflight = new Map<string, Promise<CalendarListEntry[]>>();
+
+/**
+ * Raw CalendarList per user, cached briefly and shared between concurrent requests. Only the
+ * Google list is cached; the user's enabled-calendar selection is always read fresh from the DB.
+ */
+function fetchCalendarListCached(userId: string, token: string): Promise<CalendarListEntry[]> {
+  const cached = calendarListCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.items);
+  const inflight = calendarListInflight.get(userId);
+  if (inflight) return inflight;
+  const request = fetchCalendarList(token)
+    .then((items) => {
+      calendarListCache.set(userId, { items, expiresAt: Date.now() + CALENDAR_LIST_TTL_MS });
+      return items;
+    })
+    .finally(() => calendarListInflight.delete(userId));
+  calendarListInflight.set(userId, request);
+  return request;
+}
+
 function toListItem(
   entry: CalendarListEntry,
   enabledIds: Set<string> | null,
@@ -96,20 +120,30 @@ function toListItem(
   };
 }
 
-export async function listGoogleCalendars(userId: string): Promise<GoogleCalendarListItem[]> {
-  const token = await getValidGoogleAccessToken(userId);
-  const stored = await getSelectedCalendarIds(userId);
+function buildCalendarItems(entries: CalendarListEntry[], stored: string[] | null) {
   const enabledIds = stored === null ? null : new Set(stored);
-  const items = (await fetchCalendarList(token))
+  const items = entries
     .map((entry) => toListItem(entry, enabledIds))
     .filter((item): item is GoogleCalendarListItem => Boolean(item));
   items.sort((a, b) => Number(b.primary) - Number(a.primary) || a.summary.localeCompare(b.summary));
   return items;
 }
 
-async function calendarsToQuery(userId: string, token: string): Promise<GoogleCalendarListItem[]> {
-  const listed = await listGoogleCalendars(userId);
-  const stored = await getSelectedCalendarIds(userId);
+/** Token and stored selection are independent DB reads, so they run together. */
+async function loadCalendarContext(userId: string) {
+  const [token, stored] = await Promise.all([
+    getValidGoogleAccessToken(userId),
+    getSelectedCalendarIds(userId),
+  ]);
+  const listed = buildCalendarItems(await fetchCalendarListCached(userId, token), stored);
+  return { token, stored, listed };
+}
+
+export async function listGoogleCalendars(userId: string): Promise<GoogleCalendarListItem[]> {
+  return (await loadCalendarContext(userId)).listed;
+}
+
+function calendarsToQuery(listed: GoogleCalendarListItem[], stored: string[] | null): GoogleCalendarListItem[] {
   const enabled = listed.filter((item) => item.enabled);
   if (stored !== null) return enabled;
   if (enabled.length > 0) return enabled;
@@ -227,13 +261,25 @@ function sortEvents(events: CalendarEvent[]) {
   });
 }
 
-async function listMergedEvents(userId: string, timeMin: string, timeMax: string) {
-  const token = await getValidGoogleAccessToken(userId);
-  const calendars = await calendarsToQuery(userId, token);
+async function listMergedEvents(
+  token: string,
+  calendars: GoogleCalendarListItem[],
+  timeMin: string,
+  timeMax: string,
+) {
   const batches = await Promise.all(
     calendars.map((calendar) => listEventsForCalendar(token, calendar, timeMin, timeMax)),
   );
   return sortEvents(batches.flat()).slice(0, MAX_EVENTS);
+}
+
+/** Resolves token + calendars once per request (previously done twice, with two list fetches). */
+async function resolveQueryCalendars(userId: string) {
+  const { token, stored, listed } = await loadCalendarContext(userId);
+  const calendars = calendarsToQuery(listed, stored);
+  const timeZone =
+    calendars.find((item) => item.primary)?.timeZone || calendars[0]?.timeZone || "UTC";
+  return { token, calendars, timeZone };
 }
 
 export async function listEvents(userId: string, options?: { days?: number }) {
@@ -243,10 +289,7 @@ export async function listEvents(userId: string, options?: { days?: number }) {
 export const googleCalendarProvider: CalendarProvider = {
   listEvents,
   async getTodayEvents(userId: string) {
-    const token = await getValidGoogleAccessToken(userId);
-    const calendars = await calendarsToQuery(userId, token);
-    const timeZone =
-      calendars.find((item) => item.primary)?.timeZone || calendars[0]?.timeZone || "UTC";
+    const { token, calendars, timeZone } = await resolveQueryCalendars(userId);
     const today = new Intl.DateTimeFormat("en-CA", {
       timeZone,
       year: "numeric",
@@ -254,17 +297,14 @@ export const googleCalendarProvider: CalendarProvider = {
       day: "2-digit",
     }).format(new Date());
     const { timeMin, timeMax } = dayBounds(today, timeZone);
-    return listMergedEvents(userId, timeMin, timeMax);
+    return listMergedEvents(token, calendars, timeMin, timeMax);
   },
 
   async getUpcomingEvents(userId: string, days = 7) {
-    const token = await getValidGoogleAccessToken(userId);
-    const calendars = await calendarsToQuery(userId, token);
-    const timeZone =
-      calendars.find((item) => item.primary)?.timeZone || calendars[0]?.timeZone || "UTC";
+    const { token, calendars, timeZone } = await resolveQueryCalendars(userId);
     const boundedDays = Math.min(Math.max(days, 1), 31);
     const { timeMin, timeMax } = rangeBoundsFromToday(boundedDays, timeZone);
-    return listMergedEvents(userId, timeMin, timeMax);
+    return listMergedEvents(token, calendars, timeMin, timeMax);
   },
   async createEvent(_userId: string, _input: CalendarWriteInput) {
     throw new AppError("Calendar writes require human confirmation", 403, "CONFIRMATION_REQUIRED");

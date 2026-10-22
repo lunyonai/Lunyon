@@ -7,7 +7,11 @@ import StatsGrid from "./components/StatsGrid.tsx";
 import ActivityFeed from "./components/ActivityFeed.tsx";
 import SystemStatus from "./components/SystemStatus.tsx";
 import ActivityChart from "./components/ActivityChart";
-import QuickActions from "./components/QuickActions";
+import AskAssistantCard from "./components/AskAssistantCard";
+import GettingStarted from "./components/GettingStarted";
+import { useWorkspaceStatus } from "./useWorkspaceStatus";
+import InboxWidget from "./components/InboxWidget";
+import TodayAgenda from "./components/TodayAgenda";
 
 function PaymentNotice() {
   const { t } = useLocale();
@@ -35,25 +39,33 @@ function PaymentNotice() {
 }
 
 export default function DashboardPage() {
-
+  const workspace = useWorkspaceStatus();
   return (
     <AppShell>
       <section className="space-y-6">
         <PaymentNotice />
 
-        <DashboardHeader />
+        <div className="grid gap-6 xl:grid-cols-3">
+          <div className="grid xl:col-span-2">
+            <DashboardHeader />
+          </div>
+          <AskAssistantCard />
+        </div>
 
         <StatsGrid />
-
-        <QuickActions />
 
         <div className="grid items-start gap-6 xl:grid-cols-3">
           <div className="space-y-6 xl:col-span-2">
             <ActivityChart />
+            <GettingStarted status={workspace} />
             <ActivityFeed />
           </div>
 
-          <SystemStatus />
+          <div className="space-y-6">
+            <TodayAgenda />
+            <InboxWidget />
+            <SystemStatus status={workspace} />
+          </div>
         </div>
       </section>
     </AppShell>

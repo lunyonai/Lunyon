@@ -159,7 +159,16 @@ export default function CalendarPage() {
     setNeedsReconnect(false);
     setNotConfigured(false);
     try {
-      const status = await api.googleStatus();
+      // Status and data are fetched together (the data endpoints answer 409/401 when Google
+      // isn't connected); data results are only used once status says the calendar is usable.
+      const [statusResult, todayResult, weekResult, calendarsResult] = await Promise.allSettled([
+        api.googleStatus(),
+        api.calendarToday(),
+        api.calendarUpcoming(7),
+        api.googleCalendars(),
+      ]);
+      if (statusResult.status === "rejected") throw statusResult.reason;
+      const status = statusResult.value;
       setCanWrite(Boolean(status.canWrite));
       if (!status.connected) {
         setToday([]);
@@ -176,14 +185,12 @@ export default function CalendarPage() {
         setError(t("app.calendar.grantList"));
         return;
       }
-      const [todayEvents, weekEvents, nextCalendars] = await Promise.all([
-        api.calendarToday(),
-        api.calendarUpcoming(7),
-        api.googleCalendars(),
-      ]);
-      setToday(todayEvents);
-      setUpcoming(weekEvents);
-      setCalendars(nextCalendars);
+      for (const result of [todayResult, weekResult, calendarsResult]) {
+        if (result.status === "rejected") throw result.reason;
+      }
+      setToday(todayResult.status === "fulfilled" ? todayResult.value : []);
+      setUpcoming(weekResult.status === "fulfilled" ? weekResult.value : []);
+      setCalendars(calendarsResult.status === "fulfilled" ? calendarsResult.value : []);
     } catch (err) {
       setToday([]);
       setUpcoming([]);

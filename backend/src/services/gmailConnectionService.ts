@@ -159,6 +159,8 @@ export async function completeGmailOAuth(
     : await supabaseAdmin.from("integration_connections").insert(payload);
 
   if (error) dbError(error);
+  // New token and possibly new scopes (e.g. send enabled): don't serve the old cached copy.
+  forgetGmailToken(userId);
 }
 
 export async function assertGmailSendAccess(userId: string) {
@@ -171,26 +173,71 @@ export async function assertGmailSendAccess(userId: string) {
   }
 }
 
-export async function getValidGmailAccessToken(userId: string, needSend = false): Promise<string> {
-  const row = await loadConnection(userId);
-  if (!row || row.status !== "connected" || !row.access_token_encrypted) {
-    throw new AppError("Gmail is not connected", 409, "GMAIL_NOT_CONNECTED");
-  }
-  if (needSend && !hasGmailSendScope(row.scopes)) {
+/**
+ * Short-lived in-memory copy of a valid access token and its scopes, so the burst of requests
+ * behind one Mail page load skips the DB round trip. Kept for at most TOKEN_CACHE_MAX_MS and
+ * never past the token's own expiry; dropped on connect, disconnect and refresh failure.
+ * (With several API instances, another instance's copy can outlive a disconnect by that window.)
+ */
+const TOKEN_CACHE_MAX_MS = 60_000;
+const TOKEN_EXPIRY_MARGIN_MS = 60_000;
+const tokenCache = new Map<string, { token: string; scopes: string[] | null; validUntil: number }>();
+const refreshInflight = new Map<string, Promise<string>>();
+
+function forgetGmailToken(userId: string) {
+  tokenCache.delete(userId);
+}
+
+function rememberGmailToken(userId: string, token: string, scopes: string[] | null, expiresAt: number) {
+  const validUntil = Math.min(expiresAt - TOKEN_EXPIRY_MARGIN_MS, Date.now() + TOKEN_CACHE_MAX_MS);
+  if (validUntil > Date.now()) tokenCache.set(userId, { token, scopes, validUntil });
+}
+
+function assertScopes(scopes: string[] | null, needSend: boolean) {
+  if (needSend && !hasGmailSendScope(scopes)) {
     throw new AppError("Gmail send permission is required", 403, "GMAIL_SEND_SCOPE");
   }
-  if (!needSend && !hasGmailReadScope(row.scopes)) {
+  if (!needSend && !hasGmailReadScope(scopes)) {
     throw new AppError("Gmail read permission is required", 403, "GMAIL_READ_SCOPE");
   }
+}
+
+export async function getValidGmailAccessToken(userId: string, needSend = false): Promise<string> {
+  const cached = tokenCache.get(userId);
+  if (cached && cached.validUntil > Date.now()) {
+    assertScopes(cached.scopes, needSend);
+    return cached.token;
+  }
+
+  const row = await loadConnection(userId);
+  if (!row || row.status !== "connected" || !row.access_token_encrypted) {
+    forgetGmailToken(userId);
+    throw new AppError("Gmail is not connected", 409, "GMAIL_NOT_CONNECTED");
+  }
+  assertScopes(row.scopes, needSend);
 
   const expiresAt = row.token_expires_at ? new Date(row.token_expires_at).getTime() : 0;
-  if (expiresAt - 60_000 > Date.now()) {
-    return decryptSecret(row.access_token_encrypted);
+  if (expiresAt - TOKEN_EXPIRY_MARGIN_MS > Date.now()) {
+    const token = decryptSecret(row.access_token_encrypted);
+    rememberGmailToken(userId, token, row.scopes, expiresAt);
+    return token;
   }
   if (!row.refresh_token_encrypted) {
     throw new AppError("Gmail reconnection required", 401);
   }
 
+  // Parallel requests that all find an expired token share a single refresh.
+  const inflight = refreshInflight.get(userId);
+  if (inflight) return inflight;
+  const refresh = refreshGmailToken(userId, row).finally(() => refreshInflight.delete(userId));
+  refreshInflight.set(userId, refresh);
+  return refresh;
+}
+
+async function refreshGmailToken(userId: string, row: ConnectionRow): Promise<string> {
+  if (!row.refresh_token_encrypted) {
+    throw new AppError("Gmail reconnection required", 401);
+  }
   try {
     const refreshed = await refreshGoogleAccessToken(decryptSecret(row.refresh_token_encrypted));
     const nextExpiry = refreshed.expiry_date
@@ -209,8 +256,10 @@ export async function getValidGmailAccessToken(userId: string, needSend = false)
       .eq("user_id", userId)
       .eq("provider", GMAIL_PROVIDER);
     if (error) dbError(error);
+    rememberGmailToken(userId, refreshed.access_token as string, row.scopes, new Date(nextExpiry).getTime());
     return refreshed.access_token as string;
   } catch {
+    forgetGmailToken(userId);
     await supabaseAdmin
       .from("integration_connections")
       .update({ status: "error", updated_at: new Date().toISOString() })
@@ -226,6 +275,7 @@ async function otherGoogleProductConnected(userId: string, other: string) {
 }
 
 export async function disconnectGmail(userId: string): Promise<GmailStatus> {
+  forgetGmailToken(userId);
   const row = await loadConnection(userId);
   if (!row) return publicStatus(null);
 
